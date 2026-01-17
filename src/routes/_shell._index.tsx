@@ -28,6 +28,7 @@ const extensions = [
 	".mbox",
 	".ics",
 	".vcf",
+	".epub",
 	".pdf",
 	".jpg",
 	".jpeg",
@@ -44,6 +45,7 @@ const extensions = [
 	".dat",
 	".ini",
 	".arb",
+	".kml",
 ].join("\u00A0\u00A0");
 
 export function meta() {

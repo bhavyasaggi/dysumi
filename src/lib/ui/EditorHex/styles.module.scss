@@ -1,0 +1,159 @@
+.hexEditor {
+  display: flex;
+  height: 100%;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--mantine-color-body);
+}
+
+.editorContainer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  background: var(--mantine-color-body);
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.toolbar {
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  background: var(--mantine-color-default);
+  flex-shrink: 0;
+}
+
+.hexHeader {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  gap: 8px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  background: var(--mantine-color-default);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.scrollArea {
+  flex: 1;
+  overflow: auto;
+}
+
+.hexContent {
+  padding: 4px 0;
+}
+
+.hexRow {
+  display: flex;
+  align-items: center;
+  padding: 2px 8px;
+  gap: 8px;
+
+  &:hover {
+    background: var(--mantine-color-default-hover);
+  }
+}
+
+.offset {
+  color: var(--mantine-color-dimmed);
+  width: 80px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.hexCells {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.hexSeparator {
+  width: 8px;
+}
+
+.hexByte {
+  width: 22px;
+  text-align: center;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background-color 0.1s;
+  padding: 1px 2px;
+
+  &:hover:not(.empty):not(.headerByte) {
+    background: var(--mantine-color-blue-light);
+  }
+
+  &.cursor {
+    background: var(--mantine-color-blue-filled);
+    color: var(--mantine-color-white);
+  }
+
+  &.selected {
+    background: var(--mantine-color-blue-light);
+  }
+
+  &.empty {
+    cursor: default;
+    opacity: 0.3;
+  }
+
+  &.headerByte {
+    cursor: default;
+    color: var(--mantine-color-dimmed);
+    font-weight: 500;
+  }
+}
+
+.editNibble {
+  text-decoration: underline;
+  text-decoration-style: solid;
+  text-decoration-thickness: 2px;
+}
+
+.asciiCells {
+  display: flex;
+  align-items: center;
+  padding-left: 16px;
+  border-left: 1px solid var(--mantine-color-default-border);
+  flex-shrink: 0;
+}
+
+.asciiByte {
+  width: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.1s;
+  border-radius: 2px;
+
+  &:hover:not(.empty) {
+    background: var(--mantine-color-blue-light);
+  }
+
+  &.cursor {
+    background: var(--mantine-color-blue-filled);
+    color: var(--mantine-color-white);
+  }
+
+  &.selected {
+    background: var(--mantine-color-blue-light);
+  }
+
+  &.empty {
+    cursor: default;
+    opacity: 0.3;
+  }
+
+  &.nonPrintable {
+    color: var(--mantine-color-dimmed);
+  }
+}
+
+.inspector {
+  border-left: 1px solid var(--mantine-color-default-border);
+  background: var(--mantine-color-body);
+  overflow-y: auto;
+  flex-shrink: 0;
+}

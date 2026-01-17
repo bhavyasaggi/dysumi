@@ -219,6 +219,39 @@ const fileProcessor: FileProcessor = {
 			return { success: true };
 		});
 	},
+	async editBinary(path, content) {
+		return withFileLock(path, async () => {
+			const pathSegments = pathToSegments(path);
+			const pathName = pathSegments.pop() || "";
+
+			let opfsHandle: FileSystemHandle = await navigator.storage.getDirectory();
+			opfsHandle = await (
+				opfsHandle as FileSystemDirectoryHandle
+			).getDirectoryHandle(DRAFT_NAME, {
+				create: true,
+			});
+			for await (const segment of pathSegments) {
+				opfsHandle = await (
+					opfsHandle as FileSystemDirectoryHandle
+				).getDirectoryHandle(segment, {
+					create: true,
+				});
+			}
+			opfsHandle = await (
+				opfsHandle as FileSystemDirectoryHandle
+			).getFileHandle(pathName, {
+				create: true,
+			});
+
+			const writable = await (
+				opfsHandle as FileSystemFileHandle
+			).createWritable();
+			await writable.write(content);
+			await writable.close();
+
+			return { success: true };
+		});
+	},
 	async save(sourcePath, options) {
 		return withFileLock(sourcePath, async () => {
 			const { targetPath } = options || {};
@@ -372,7 +405,56 @@ const fileProcessor: FileProcessor = {
 
 		return meta;
 	},
+	async readBinary(path) {
+		const [opfsHandle, handle] = await Promise.all([
+			this.getHandle(path, { mode: "read", type: "opfs" }).catch(() => {
+				/* GULP */
+			}),
+			this.getHandle(path, { mode: "read" }),
+		]);
+		if (!(handle instanceof FileSystemFileHandle)) {
+			throw new Error("Cannot read a directory");
+		}
+
+		const meta: FileProcessorEntry & { content: ArrayBuffer } = {
+			name: handle.name,
+			fullPath: path,
+			isDirectory: (handle.kind as string) === "directory",
+			isFile: handle.kind === "file",
+			content: new ArrayBuffer(0),
+		};
+		if (opfsHandle && opfsHandle instanceof FileSystemFileHandle) {
+			const file = await opfsHandle.getFile();
+			meta.content = await file.arrayBuffer();
+			meta.isDirty = true;
+			meta.name = file.name;
+			meta.size = file.size;
+			meta.lastModified = file.lastModified;
+		} else {
+			const file = await handle.getFile();
+			meta.content = await file.arrayBuffer();
+			meta.name = file.name;
+			meta.size = file.size;
+			meta.lastModified = file.lastModified;
+		}
+
+		return meta;
+	},
 	async write(path, content) {
+		return withFileLock(path, async () => {
+			const handle = await this.getHandle(path, { mode: "readwrite" });
+			if (!(handle instanceof FileSystemFileHandle)) {
+				throw new Error("Cannot write to a directory");
+			}
+
+			const writable = await handle.createWritable();
+			await writable.write(content);
+			await writable.close();
+
+			return { success: true };
+		});
+	},
+	async writeBinary(path, content) {
 		return withFileLock(path, async () => {
 			const handle = await this.getHandle(path, { mode: "readwrite" });
 			if (!(handle instanceof FileSystemFileHandle)) {

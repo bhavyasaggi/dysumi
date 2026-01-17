@@ -23,3 +23,22 @@ declare global {
     ): Promise<void>;
   }
 }
+
+// Module declarations for style imports
+declare module "*.module.scss" {
+  const classes: { [key: string]: string };
+  export default classes;
+}
+
+// Vite URL imports
+declare module "*?url" {
+  const url: string;
+  export default url;
+}
+
+declare module "*?worker" {
+  const workerConstructor: new () => Worker;
+  export default workerConstructor;
+}
+
+export {};

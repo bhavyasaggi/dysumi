@@ -26,6 +26,10 @@ export interface FileProcessor {
 	 */
 	edit(path: string, content: string): Promise<{ success: boolean }>;
 	/**
+	 * Writes binary data to OPFS
+	 */
+	editBinary(path: string, content: ArrayBuffer): Promise<{ success: boolean }>;
+	/**
 	 * Copies OPFS to FS
 	 */
 	save(
@@ -51,9 +55,19 @@ export interface FileProcessor {
 		path: string,
 	): Promise<(FileProcessorEntry & { content: string }) | undefined>; // read stream instead of string?
 	/**
+	 * Reads binary data from OPFS if present, else reads from FS
+	 */
+	readBinary(
+		path: string,
+	): Promise<(FileProcessorEntry & { content: ArrayBuffer }) | undefined>;
+	/**
 	 * Writes to FS
 	 */
 	write(path: string, content: string): Promise<{ success: boolean }>;
+	/**
+	 * Writes binary data to FS
+	 */
+	writeBinary(path: string, content: ArrayBuffer): Promise<{ success: boolean }>;
 	/**
 	 * Deletes from OPFS & FS
 	 */
