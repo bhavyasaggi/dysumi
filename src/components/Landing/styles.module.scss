@@ -1,0 +1,116 @@
+.glitch {
+  color: #fff;
+  // font-size: clamp(2rem, 10vw, 8rem);
+  white-space: nowrap;
+  // font-weight: 900;
+  position: relative;
+  margin: 0 auto;
+  user-select: none;
+}
+
+.glitch::after,
+.glitch::before {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  color: #fff;
+  background: transparent;
+  overflow: hidden;
+  clip-path: inset(0 0 0 0);
+  mix-blend-mode: color;
+}
+
+.glitch::after {
+  left: 4px;
+  color: red;
+  animation: animate-glitch var(--after-duration, 3s) infinite linear alternate-reverse;
+}
+.glitch::before {
+  left: -4px;
+  color: cyan;
+  animation: animate-glitch var(--before-duration, 2s) infinite linear alternate-reverse;
+}
+
+@keyframes animate-glitch {
+  0% {
+    clip-path: inset(20% 0 50% 0);
+  }
+  5% {
+    clip-path: inset(10% 0 60% 0);
+  }
+  10% {
+    clip-path: inset(15% 0 55% 0);
+  }
+  15% {
+    clip-path: inset(25% 0 35% 0);
+  }
+  20% {
+    clip-path: inset(30% 0 40% 0);
+  }
+  25% {
+    clip-path: inset(40% 0 20% 0);
+  }
+  30% {
+    clip-path: inset(10% 0 60% 0);
+  }
+  35% {
+    clip-path: inset(15% 0 55% 0);
+  }
+  40% {
+    clip-path: inset(25% 0 35% 0);
+  }
+  45% {
+    clip-path: inset(30% 0 40% 0);
+  }
+  50% {
+    clip-path: inset(20% 0 50% 0);
+  }
+  55% {
+    clip-path: inset(10% 0 60% 0);
+  }
+  60% {
+    clip-path: inset(15% 0 55% 0);
+  }
+  65% {
+    clip-path: inset(25% 0 35% 0);
+  }
+  70% {
+    clip-path: inset(30% 0 40% 0);
+  }
+  75% {
+    clip-path: inset(40% 0 20% 0);
+  }
+  80% {
+    clip-path: inset(20% 0 50% 0);
+  }
+  85% {
+    clip-path: inset(10% 0 60% 0);
+  }
+  90% {
+    clip-path: inset(15% 0 55% 0);
+  }
+  95% {
+    clip-path: inset(25% 0 35% 0);
+  }
+  100% {
+    clip-path: inset(30% 0 40% 0);
+  }
+}
+
+.glitchText {
+  --s: 1;
+  --rx: calc(var(--s) * -1px);
+  --ry: calc(var(--s) *  1px);
+  --bx: calc(var(--s) *  1px);
+  --by: calc(var(--s) * -1px);
+  --gx: calc(var(--s) *  0px);
+  --gy: calc(var(--s) *  0px);
+  --gb: 2px;
+  --a: 1;
+  --wasx: 0px;
+  --wasy: 0px;
+  color: #fff;
+  filter: drop-shadow(var(--rx) var(--ry) 1px rgba(255,0,0,var(--a)))
+    drop-shadow(var(--gx) var(--gy) var(--gb) rgba(0,255,0,var(--a)))
+    drop-shadow(var(--bx) var(--by) 1px rgba(0,0,255,var(--a)));
+}

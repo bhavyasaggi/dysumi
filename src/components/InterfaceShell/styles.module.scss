@@ -1,0 +1,7 @@
+.panelAside {
+  @media (max-width: 992px) {
+    &:not([data-panel-active-id=""]) {
+      flex-basis: 100% !important;
+    }
+  }
+}
