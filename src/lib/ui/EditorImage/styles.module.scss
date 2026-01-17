@@ -1,0 +1,28 @@
+.imageEditor {
+  height: 100%;
+  width: 100%;
+  
+  // Override filerobot styles to fit in our layout
+  :global(.FIE_root) {
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  :global(.FIE_canvas-container) {
+    background: var(--mantine-color-body);
+  }
+
+  :global(.FIE_topbar) {
+    background: var(--mantine-color-default);
+    border-bottom: 1px solid var(--mantine-color-default-border);
+  }
+
+  :global(.FIE_tabs) {
+    background: var(--mantine-color-default);
+  }
+
+  :global(.FIE_tools-bar-wrapper) {
+    background: var(--mantine-color-default);
+    border-top: 1px solid var(--mantine-color-default-border);
+  }
+}

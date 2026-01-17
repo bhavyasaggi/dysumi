@@ -8,5 +8,9 @@ export default defineConfig({
   worker: {
     plugins: () => [comlink()],
   },
-  optimizeDeps: {},
+  optimizeDeps: {
+    include: ["react-filerobot-image-editor", "pdfjs-dist"],
+  },
+  // Ensure pdf.js worker is properly handled
+  assetsInclude: ["**/*.worker.js", "**/*.worker.mjs"],
 });
