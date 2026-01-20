@@ -4,6 +4,9 @@ import { comlink } from "vite-plugin-comlink";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
+  server: {
+    host: true,
+  },
   plugins: [comlink(), reactRouter(), tsconfigPaths()],
   worker: {
     plugins: () => [comlink()],

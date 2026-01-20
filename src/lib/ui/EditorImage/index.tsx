@@ -2,7 +2,7 @@
 // https://github.com/scaleflex/filerobot-image-editor
 
 import { Box, Center, Loader, Text } from "@mantine/core";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import styles from "./styles.module.scss";
 
@@ -34,6 +34,8 @@ interface EditorImageProps {
 	src?: string;
 	/** File name for saving */
 	fileName?: string;
+	/** Original file extension (e.g., 'jpg', 'png') to preserve format on save */
+	fileExtension?: string;
 	/** Called when image is saved/edited */
 	onSave?: (imageData: {
 		imageBase64: string;
@@ -48,9 +50,30 @@ interface EditorImageProps {
 	readOnly?: boolean;
 }
 
+// Get save format from extension
+function getSaveFormat(ext?: string): "jpeg" | "png" | "webp" {
+	if (!ext) return "png";
+	const lower = ext.toLowerCase();
+	if (lower === "jpg" || lower === "jpeg") return "jpeg";
+	if (lower === "webp") return "webp";
+	if (lower === "png") return "png";
+	// For other formats (gif, bmp, tiff, etc.), save as PNG to preserve quality
+	return "png";
+}
+
+// Get mime type from format
+function formatToMimeType(format: "jpeg" | "png" | "webp"): string {
+	switch (format) {
+		case "jpeg": return "image/jpeg";
+		case "webp": return "image/webp";
+		default: return "image/png";
+	}
+}
+
 export default function EditorImage({
 	src,
 	fileName = "image",
+	fileExtension,
 	onSave,
 	onClose,
 	readOnly = false,
@@ -62,10 +85,16 @@ export default function EditorImage({
 		TABS: TABSType;
 		TOOLS: TOOLSType;
 	} | null>(null);
+	
+	// Store onSave in ref to use in callbacks without stale closures
+	const onSaveRef = useRef(onSave);
+	onSaveRef.current = onSave;
+	
+	// Determine save format
+	const saveFormat = getSaveFormat(fileExtension);
 
 	// Dynamically import the editor component
 	useEffect(() => {
-		// Ensure React is globally available before loading the editor
 		ensureReactGlobal();
 
 		import("react-filerobot-image-editor")
@@ -82,7 +111,45 @@ export default function EditorImage({
 			});
 	}, []);
 
-	// Handle save from the editor
+	// Handle before save - intercept and save directly without modal
+	const handleBeforeSave = useCallback(
+		(savedImageData: {
+			name: string;
+			extension: string;
+			mimeType: string;
+			fullName?: string;
+			height?: number;
+			width?: number;
+			imageCanvas?: HTMLCanvasElement;
+			imageBase64?: string;
+			quality?: number;
+			cloudimageUrl?: string;
+		}) => {
+			if (readOnly) return false;
+			
+			// Get the canvas and convert to base64 with the correct format
+			const canvas = savedImageData.imageCanvas;
+			if (canvas) {
+				const mimeType = formatToMimeType(saveFormat);
+				const quality = saveFormat === "jpeg" ? 0.92 : undefined;
+				const imageBase64 = canvas.toDataURL(mimeType, quality);
+				
+				onSaveRef.current?.({
+					imageBase64,
+					mimeType,
+					width: canvas.width,
+					height: canvas.height,
+					fullName: savedImageData.fullName || fileName,
+				});
+			}
+			
+			// Return false to prevent the default save dialog
+			return false;
+		},
+		[readOnly, saveFormat, fileName],
+	);
+
+	// Handle save (called after the save dialog, but we skip it with onBeforeSave)
 	const handleSave = useCallback(
 		(editedImageObject: {
 			name: string;
@@ -96,7 +163,7 @@ export default function EditorImage({
 		}) => {
 			if (readOnly) return;
 
-			onSave?.({
+			onSaveRef.current?.({
 				imageBase64: editedImageObject.imageBase64,
 				mimeType: editedImageObject.mimeType,
 				width: editedImageObject.width,
@@ -104,7 +171,7 @@ export default function EditorImage({
 				fullName: editedImageObject.fullName,
 			});
 		},
-		[onSave, readOnly],
+		[readOnly],
 	);
 
 	// Handle close
@@ -120,7 +187,6 @@ export default function EditorImage({
 			return;
 		}
 
-		// Test if image can be loaded
 		const img = new Image();
 		img.onload = () => {
 			setIsLoading(false);
@@ -180,6 +246,7 @@ export default function EditorImage({
 		<Box className={styles.imageEditor} h="100%" w="100%">
 			<Editor
 				source={src}
+				onBeforeSave={handleBeforeSave}
 				onSave={handleSave}
 				onClose={handleClose}
 				annotationsCommon={{
@@ -253,8 +320,11 @@ export default function EditorImage({
 						},
 					],
 				}}
-				savingPixelRatio={2}
-				previewPixelRatio={2}
+				defaultSavedImageName={fileName}
+				defaultSavedImageType={saveFormat}
+				forceToPngInEllipticalCrop={false}
+				savingPixelRatio={1}
+				previewPixelRatio={1}
 				observePluginContainerSize
 				showCanvasOnly={false}
 				useCloudimage={false}

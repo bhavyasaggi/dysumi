@@ -368,16 +368,7 @@ export default function EditorPdf({ src, fileName }: EditorPdfProps) {
 						<Icon icon="zoom-in" width={16} height={16} title="Zoom In" />
 					</ActionIcon>
 				</Tooltip>
-
-				<Divider orientation="vertical" />
-
-				{/* Actions */}
-				<Tooltip label="Download">
-					<ActionIcon variant="subtle" onClick={downloadPdf}>
-						<Icon icon="download" width={16} height={16} title="Download" />
-					</ActionIcon>
-				</Tooltip>
-
+				
 				<Text size="xs" c="dimmed" ml="auto">
 					{fileName || "PDF Document"}
 				</Text>

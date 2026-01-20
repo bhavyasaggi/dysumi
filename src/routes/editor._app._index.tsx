@@ -13,7 +13,7 @@ const ScreenMarkdown = React.lazy(() => import("@/components/ScreenMarkdown"));
 const ScreenImage = React.lazy(() => import("@/components/ScreenImage"));
 const ScreenPdf = React.lazy(() => import("@/components/ScreenPdf"));
 const ScreenMedia = React.lazy(() => import("@/components/ScreenMedia"));
-const ScreenPaint = React.lazy(() => import("@/components/ScreenPaint")); // Easter egg!
+const ScreenCalendar = React.lazy(() => import("@/components/ScreenCalendar"));
 
 // Binary/hex file extensions that should use the hex editor
 const HEX_EXTENSIONS = new Set([
@@ -36,7 +36,6 @@ const HEX_EXTENSIONS = new Set([
 ]);
 
 // Image file extensions supported by the image editor
-// Note: BMP is handled separately as an Easter egg (MS Paint + Clippy!)
 const IMAGE_EXTENSIONS = new Set([
 	"jpg",
 	"jpeg",
@@ -47,6 +46,10 @@ const IMAGE_EXTENSIONS = new Set([
 	"ico",
 	"tiff",
 	"tif",
+	"bmp",
+	"avif",
+	"heic",
+	"heif",
 ]);
 
 // PDF file extension
@@ -79,6 +82,14 @@ const AUDIO_EXTENSIONS = new Set([
 	"opus",
 	"oga",
 	"ogg",
+]);
+
+// Calendar file extensions (iCalendar and vCalendar)
+const CALENDAR_EXTENSIONS = new Set([
+	"ics",  // iCalendar format
+	"vcs",  // vCalendar format (legacy)
+	"ical",
+	"ifb",  // Free/Busy data
 ]);
 
 export function meta() {
@@ -123,15 +134,14 @@ export default function RouteEditorAppIndex() {
 		// Check each file type category
 		if (format === "md") {
 			Component = ScreenMarkdown;
-		} else if (format === "bmp") {
-			// 🎉 Easter Egg: BMP files open in MS Paint with Clippy!
-			Component = ScreenPaint;
 		} else if (IMAGE_EXTENSIONS.has(format)) {
 			Component = ScreenImage;
 		} else if (PDF_EXTENSIONS.has(format)) {
 			Component = ScreenPdf;
 		} else if (VIDEO_EXTENSIONS.has(format) || AUDIO_EXTENSIONS.has(format)) {
 			Component = ScreenMedia;
+		} else if (CALENDAR_EXTENSIONS.has(format)) {
+			Component = ScreenCalendar;
 		} else if (HEX_EXTENSIONS.has(format)) {
 			Component = ScreenHex;
 		} else if (["csv", "json", "yaml", "yml"].includes(format)) {

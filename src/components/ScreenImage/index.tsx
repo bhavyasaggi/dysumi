@@ -21,10 +21,22 @@ function base64ToUint8Array(base64: string): Uint8Array {
 	return bytes;
 }
 
-// Helper to create object URL from Uint8Array
-function createImageUrl(data: Uint8Array, mimeType: string): string {
-	const blob = new Blob([data], { type: mimeType });
-	return URL.createObjectURL(blob);
+// Helper to convert Uint8Array to base64 string
+function uint8ArrayToBase64(data: Uint8Array): string {
+	let binary = "";
+	const chunkSize = 8192; // Process in chunks to avoid call stack issues
+	for (let i = 0; i < data.length; i += chunkSize) {
+		const chunk = data.subarray(i, Math.min(i + chunkSize, data.length));
+		binary += String.fromCharCode(...chunk);
+	}
+	return btoa(binary);
+}
+
+// Helper to create data URL from Uint8Array
+// Using data URL instead of blob URL for better compatibility with image editors
+function createImageDataUrl(data: Uint8Array, mimeType: string): string {
+	const base64 = uint8ArrayToBase64(data);
+	return `data:${mimeType};base64,${base64}`;
 }
 
 // Determine mime type from file path
@@ -41,6 +53,9 @@ function getMimeType(path: string): string {
 		ico: "image/x-icon",
 		tiff: "image/tiff",
 		tif: "image/tiff",
+		avif: "image/avif",
+		heic: "image/heic",
+		heif: "image/heif",
 	};
 	return mimeTypes[ext] || "image/png";
 }
@@ -84,16 +99,13 @@ export default function ScreenImage() {
 		2000,
 	);
 
-	// Create image URL from binary data
+	// Create image data URL from binary data
+	// Using data URL instead of blob URL for better compatibility with the image editor
 	useEffect(() => {
 		if (webFsFile?.content && webFsFile.content.length > 0) {
 			const mimeType = getMimeType(activeFile?.path || "");
-			const url = createImageUrl(webFsFile.content, mimeType);
-			setImageUrl(url);
-
-			return () => {
-				URL.revokeObjectURL(url);
-			};
+			const dataUrl = createImageDataUrl(webFsFile.content, mimeType);
+			setImageUrl(dataUrl);
 		}
 	}, [webFsFile?.content, activeFile?.path]);
 
@@ -104,10 +116,12 @@ export default function ScreenImage() {
 		? String((webFsFileError as Error)?.message)
 		: undefined;
 
-	// Get file name from path
-	const fileName = useMemo(() => {
+	// Get file name and extension from path
+	const { fileName, fileExtension } = useMemo(() => {
 		const path = activeFile?.path || "";
-		return path.split("/").pop() || "image";
+		const name = path.split("/").pop() || "image";
+		const ext = name.includes(".") ? name.split(".").pop()?.toLowerCase() || "" : "";
+		return { fileName: name, fileExtension: ext };
 	}, [activeFile?.path]);
 
 	// Handle save from editor
@@ -157,6 +171,7 @@ export default function ScreenImage() {
 			key={activeFile?.path}
 			src={imageUrl || undefined}
 			fileName={fileName}
+			fileExtension={fileExtension}
 			onSave={handleSave}
 			readOnly={false}
 		/>
