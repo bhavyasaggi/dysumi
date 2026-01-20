@@ -82,7 +82,6 @@
 		"monaco-editor": "^0.55.1",
 		"papaparse": "^5.5.3",
 		"pdfjs-dist": "^4.10.38",
-		"clippyts": "^1.0.9",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0",
 		"react-filerobot-image-editor": "^5.0.0-beta.147",
