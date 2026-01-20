@@ -1,0 +1,130 @@
+.editorCalendar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--mantine-color-body);
+}
+
+.toolbar {
+  flex-shrink: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  background: var(--mantine-color-body);
+}
+
+.content {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+  }
+}
+
+// Calendar View Container
+.calendarViewContainer {
+  max-width: 100%;
+}
+
+.calendarPanel {
+  position: sticky;
+  top: 0;
+
+  @media (max-width: 768px) {
+    position: static;
+    margin-bottom: 1rem;
+  }
+}
+
+.eventsPanel {
+  min-height: 300px;
+}
+
+// Event Card Styles
+.eventCard {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--mantine-shadow-md);
+    border-color: var(--mantine-color-blue-4);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--mantine-color-blue-5);
+    box-shadow: 0 0 0 2px var(--mantine-color-blue-2);
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--mantine-color-blue-5);
+    box-shadow: 0 0 0 2px var(--mantine-color-blue-2);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// Timeline Styles
+.timelinePast {
+  opacity: 0.65;
+}
+
+// Accessibility improvements
+@media (prefers-reduced-motion: reduce) {
+  .eventCard {
+    transition: none;
+  }
+
+  .eventCard:hover {
+    transform: none;
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: high) {
+  .toolbar {
+    border-width: 2px;
+  }
+
+  .eventCard {
+    border-width: 2px;
+  }
+
+  .calendarPanel {
+    border-width: 2px;
+  }
+}
+
+// Focus styles for keyboard navigation
+[role="button"]:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--mantine-color-blue-5);
+  outline-offset: 2px;
+}
+
+// Responsive adjustments
+@media (max-width: 576px) {
+  .editorCalendar {
+    font-size: 0.9rem;
+  }
+}
+
+// Dark mode adjustments
+@media (prefers-color-scheme: dark) {
+  .eventCard:hover {
+    border-color: var(--mantine-color-blue-7);
+  }
+
+  .eventCard:focus,
+  .eventCard:focus-visible {
+    border-color: var(--mantine-color-blue-6);
+    box-shadow: 0 0 0 2px var(--mantine-color-blue-9);
+  }
+}
