@@ -1,7 +1,6 @@
 {
 	"name": "dysumi",
 	"version": "0.0.1",
-	"private": true,
 	"license": "AGPL-3.0-only",
 	"type": "module",
 	"scripts": {
@@ -95,6 +94,7 @@
 		"react-router": "^7.12.0",
 		"react-window": "^2.2.5",
 		"recharts": "^3.6.0",
+		"styled-components": "^6.3.8",
 		"y-websocket": "^3.0.0",
 		"yjs": "^13.6.29"
 	},
@@ -111,9 +111,11 @@
 		"postcss-preset-mantine": "^1.18.0",
 		"postcss-simple-vars": "^7.0.1",
 		"sass": "^1.97.2",
+		"serve": "^14.2.5",
 		"typescript": "^5.9.3",
 		"vite": "^7.3.1",
 		"vite-plugin-comlink": "^5.3.0",
-		"vite-tsconfig-paths": "^6.0.4"
+		"vite-tsconfig-paths": "^6.0.4",
+		"yarn-deduplicate": "^6.0.2"
 	}
 }
