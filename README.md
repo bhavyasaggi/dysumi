@@ -1,72 +1,124 @@
 # dysumi
 
-Medium/Notion-like application that supports vscode like environment, github-flavoured markdown, and frontend playground with local-first (offline) and distributed philosophy.
-Supports case-insensitive paths, nested-categories (folders), file-meta
-Search limited to filename search
-Each file has a consistency-hash, and all files's hash is maintained for dirty-state
-Optional Local AI Support.
+A local-first, browser-native file editor. Open, edit, and manage files entirely in your browser — no server uploads, no accounts required.
 
-- \*: Native Hex Editor => loads large files in chunks => Virtualized view
-- .md: supports Github flavored markdown, (marked vs markdown-it)
-  - math/latex support
-  - SpeechSynthesis (whisper via web-llm), and native-TTS support.
-  - linking relative multimedia to markdown!
-- .mmd: mermaid for charts, kanban
-- .png/.jpg: Image Editor
-- .bmp: MS Paint (Easter Egg)
-- .mp3/.mp4: Player (with exif/metadata)
-- .pdf: PDF Editor/Modifier (pdf.js, pdf-lib)
-- code for html, xml, js, jsx, ts, tsx.
-- TableData view for json, csv.
-- Calendar/Gantt/Event View for ics, vcs
-- Phonebook for vcf
-- Inbox for mbox
-- HOT EXIT: to be avoided. All edits are live.
-- (Needs Discovery) allows p2p sync (local account with webAuthn | global account)
-  - starts a webrtc sync server [OT, CRDT] (gun-db)
-  - syncs to S3, Supabase, github-gists, google drive (rsync?)
-- (Future) Import from Notion, Confluence, Github Gists.
+Built on the [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API) and [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system), dysumi provides a VS Code–inspired workspace with dedicated editors for Markdown, source code, images, PDFs, calendars, media, hex data, and more.
 
-**Shortcuts**:
+![Demo](public/demo-1.png)
 
-- ctrl+s => save current file, if untitled -> prompt
-- ctrl+shift+s... => save as...
-- ctrl+o => open
-- ctrl+n => new file
-- ctrl+f => find
+## Features
 
-## Roadmap
+| Format | Editor | Library |
+|---|---|---|
+| `.md` `.mdx` | Rich-text Markdown (WYSIWYG) | [Tiptap](https://tiptap.dev) + KaTeX |
+| Source code | Monaco code editor | [Monaco Editor](https://microsoft.github.io/monaco-editor/) |
+| `.csv` `.tsv` | Tabular spreadsheet | [Handsontable](https://handsontable.com) |
+| `.ics` `.vcs` | Calendar / event wizard | [ical.js](https://github.com/kewisch/ical.js) |
+| `.jpg` `.png` `.webp` `.svg` … | Image editor | [Filerobot](https://github.com/scaleflex/filerobot-image-editor) |
+| `.pdf` | PDF viewer | [PDF.js](https://mozilla.github.io/pdf.js/) |
+| `.mp4` `.mp3` `.webm` … | Media player + visualizer | [Video.js](https://videojs.com) + [Butterchurn](https://github.com/jberg/butterchurn) |
+| `.bmp` | MS Paint 🎉 | [jspaint.app](https://jspaint.app) + Clippy |
+| `.bin` `.dat` `.exe` … | Hex viewer with data inspector | Custom virtualized grid |
 
-- Scaffold Skeletal UI (vscode-elements)
-- write and save single text file
-- Create/Read/Write text files to OPFS
-- nested-accordion file structure
-- For Markdown Files: Use tiptap to inline edit & preview using markdown
-- For Text/Development files: Raw mode using monaco-editor
-- For Hex data files: A hex-editor
+**Workspace:** sidebar panels, resizable panes, tabbed files, drag-and-drop file tree ([dnd-kit](https://dndkit.com)), dark/light theme, navigation progress bar.
 
-> IDEA:
-> S3 compatible storage API! for File System Access API & service worker, to sync with remote storage.
+## Architecture
 
-## Prior Art
+```mermaid
+graph TD
+    Root["root.tsx<br/>MantineProvider + Redux"] --> Shell["_shell.tsx<br/>Public layout"]
+    Root --> Editor["editor._index.tsx<br/>Workspace"]
 
-- worker-comlink
-- tiptap (@tiptap/markdown)
-- <https://github.com/js1016/txt-reader>
-- <https://www.inkdrop.app/>
-- <https://github.com/chenxiaoyao6228/code-studio>
-- <https://github.com/AndyBitz/0xhexer>, <https://github.com/michbil/hex-works>
-- <https://github.com/tomayac/opfs-explorer>
-- <https://github.com/mlc-ai/web-llm>
-- <https://github.com/vscode-elements>
-- <https://github.com/steven-tey/novel>
-- <https://github.com/addyosmani/chatty>
-  - <https://github.com/mlc-ai/web-llm>
-- <https://github.com/addyosmani/say>
-- <https://github.com/steveseguin/tts.rocks>
-  - <https://github.com/KittenML/KittenTTS>
-- <https://github.com/jdan/notes>, <https://github.com/udecode/plate>
-- <https://github.com/souvikinator/notion-to-md>
-- <https://github.com/awran5/react-simple-typewriter>
-- <https://github.com/google/arb-editor>
-- <https://github.com/microsoft/vscode-hexeditor>
+    Editor --> IS["InterfaceShell<br/>App shell"]
+    IS --> Panels["Sidebar Panels<br/>Explorer · Search · Welcome"]
+    IS --> Screens["Screen Components<br/>(lazy-loaded)"]
+
+    Screens --> SC["ScreenCode<br/>Monaco"]
+    Screens --> SM["ScreenMarkdown<br/>Tiptap"]
+    Screens --> SI["ScreenImage<br/>Filerobot"]
+    Screens --> SH["ScreenHex<br/>Custom"]
+    Screens --> SP["ScreenPdf<br/>PDF.js"]
+    Screens --> SV["ScreenMedia<br/>Video.js"]
+    Screens --> SS["ScreenSchedule<br/>ical.js"]
+
+    SC --> RTK["RTK Query<br/>web-fs API"]
+    SM --> RTK
+    SI --> RTK
+    SH --> RTK
+    SP --> RTK
+    SV --> RTK
+    SS --> RTK
+    RTK -- Comlink --> FW["File Worker"]
+```
+
+### Storage
+
+All file I/O runs in a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API) via [Comlink](https://github.com/GoogleChromeLabs/comlink) with a file-lock mechanism to prevent concurrent writes.
+
+```mermaid
+graph LR
+    UI["Main Thread<br/>(React UI)"] -- Comlink RPC --> W["File Worker<br/>(Web Worker)"]
+    W -- read/write --> OPFS["OPFS<br/>draft-store"]
+    W -- read/write --> FS["File System Access API"]
+    W -- persist handles --> IDB["IndexedDB<br/>handles-store"]
+    OPFS -. "save (copy)" .-> FS
+```
+
+- **Edits** write to OPFS (`draft-store`) — instant saves, no permission prompts
+- **Save** copies from OPFS → File System Access API (user-granted handle)
+- **Dirty state** detected by whether an OPFS draft exists for a given path
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | [React](https://react.dev) 19 · [React Router](https://reactrouter.com) 7 (SPA, pre-rendered) |
+| UI | [Mantine](https://mantine.dev) 9 |
+| State | [Redux Toolkit](https://redux-toolkit.js.org) + RTK Query |
+| Build | [Vite](https://vite.dev) 8 |
+| Language | [TypeScript](https://www.typescriptlang.org) 6 (strict) |
+| Lint / Format | [Biome](https://biomejs.dev) 2 |
+| Styling | SCSS Modules · PostCSS (Mantine preset) |
+| Workers | [Comlink](https://github.com/GoogleChromeLabs/comlink) |
+
+## Getting Started
+
+```bash
+yarn install   # install dependencies
+yarn dev       # start dev server
+yarn typecheck # type-check (generates route types + runs tsc)
+yarn build     # production build
+yarn start     # serve production build
+```
+
+## Project Structure
+
+```
+src/
+├── components/
+│   ├── DirectoryTree/     # File explorer tree (drag-and-drop)
+│   ├── InterfaceShell/    # App shell (navbar, panels, status bar)
+│   ├── Panel*/            # Sidebar panels (Explorer, Search, Welcome)
+│   └── Screen*/           # File-type screens (Code, Markdown, Image, …)
+├── lib/
+│   ├── redux/             # Store, slices, RTK Query (web-fs API)
+│   ├── ui/                # Editor*/Viewer* components
+│   ├── utils/             # ICS parser, client boundary helper
+│   └── workers/           # File Worker (Web Worker)
+├── routes/                # File-based routes
+└── root.tsx               # App root
+```
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl+S` | Save current file |
+| `Ctrl+Shift+S` | Save as… |
+| `Ctrl+O` | Open file / folder |
+| `Ctrl+N` | New file |
+| `Ctrl+F` | Find in file |
+
+## License
+
+[AGPL-3.0-only](LICENSE)

@@ -186,7 +186,7 @@ const fileProcessor: FileProcessor = {
 			isFile: handle?.kind === "file",
 		};
 	},
-	async edit(path, content) {
+	edit(path, content) {
 		return withFileLock(path, async () => {
 			const pathSegments = pathToSegments(path);
 			const pathName = pathSegments.pop() || "";
@@ -219,7 +219,40 @@ const fileProcessor: FileProcessor = {
 			return { success: true };
 		});
 	},
-	async save(sourcePath, options) {
+	editBinary(path, content) {
+		return withFileLock(path, async () => {
+			const pathSegments = pathToSegments(path);
+			const pathName = pathSegments.pop() || "";
+
+			let opfsHandle: FileSystemHandle = await navigator.storage.getDirectory();
+			opfsHandle = await (
+				opfsHandle as FileSystemDirectoryHandle
+			).getDirectoryHandle(DRAFT_NAME, {
+				create: true,
+			});
+			for await (const segment of pathSegments) {
+				opfsHandle = await (
+					opfsHandle as FileSystemDirectoryHandle
+				).getDirectoryHandle(segment, {
+					create: true,
+				});
+			}
+			opfsHandle = await (
+				opfsHandle as FileSystemDirectoryHandle
+			).getFileHandle(pathName, {
+				create: true,
+			});
+
+			const writable = await (
+				opfsHandle as FileSystemFileHandle
+			).createWritable();
+			await writable.write(content);
+			await writable.close();
+
+			return { success: true };
+		});
+	},
+	save(sourcePath, options) {
 		return withFileLock(sourcePath, async () => {
 			const { targetPath } = options || {};
 
@@ -227,7 +260,7 @@ const fileProcessor: FileProcessor = {
 			if (finalPath) {
 				const { isValid, error } = validateDirectoryName(finalPath);
 				if (!isValid) {
-					throw new Error(error || "Invalid target path");
+					throw new Error(error ?? "Invalid target path");
 				}
 			}
 
@@ -312,7 +345,7 @@ const fileProcessor: FileProcessor = {
 			throw new Error("Unable to list a file");
 		}
 
-		const entries: Array<FileProcessorEntry> = [];
+		const entries: FileProcessorEntry[] = [];
 		// biome-ignore lint/suspicious/noExplicitAny: Unable to declare
 		for await (const entryArray of (handle as any).entries()) {
 			const [handleName, handleEntry] = entryArray as [
@@ -372,7 +405,42 @@ const fileProcessor: FileProcessor = {
 
 		return meta;
 	},
-	async write(path, content) {
+	async readBinary(path) {
+		const [opfsHandle, handle] = await Promise.all([
+			this.getHandle(path, { mode: "read", type: "opfs" }).catch(() => {
+				/* GULP */
+			}),
+			this.getHandle(path, { mode: "read" }),
+		]);
+		if (!(handle instanceof FileSystemFileHandle)) {
+			throw new Error("Cannot read a directory");
+		}
+
+		const meta: FileProcessorEntry & { content: ArrayBuffer } = {
+			name: handle.name,
+			fullPath: path,
+			isDirectory: (handle.kind as string) === "directory",
+			isFile: handle.kind === "file",
+			content: new ArrayBuffer(0),
+		};
+		if (opfsHandle && opfsHandle instanceof FileSystemFileHandle) {
+			const file = await opfsHandle.getFile();
+			meta.content = await file.arrayBuffer();
+			meta.isDirty = true;
+			meta.name = file.name;
+			meta.size = file.size;
+			meta.lastModified = file.lastModified;
+		} else {
+			const file = await handle.getFile();
+			meta.content = await file.arrayBuffer();
+			meta.name = file.name;
+			meta.size = file.size;
+			meta.lastModified = file.lastModified;
+		}
+
+		return meta;
+	},
+	write(path, content) {
 		return withFileLock(path, async () => {
 			const handle = await this.getHandle(path, { mode: "readwrite" });
 			if (!(handle instanceof FileSystemFileHandle)) {
@@ -386,7 +454,21 @@ const fileProcessor: FileProcessor = {
 			return { success: true };
 		});
 	},
-	async remove(path) {
+	writeBinary(path, content) {
+		return withFileLock(path, async () => {
+			const handle = await this.getHandle(path, { mode: "readwrite" });
+			if (!(handle instanceof FileSystemFileHandle)) {
+				throw new Error("Cannot write to a directory");
+			}
+
+			const writable = await handle.createWritable();
+			await writable.write(content);
+			await writable.close();
+
+			return { success: true };
+		});
+	},
+	remove(path) {
 		return withFileLock(path, async () => {
 			const pathParts = path.split("/");
 			const name = pathParts.pop() || "";
@@ -402,7 +484,7 @@ const fileProcessor: FileProcessor = {
 			return { success: true };
 		});
 	},
-	async createFile(path, options) {
+	createFile(path, options) {
 		return withFileLock(path, async () => {
 			const pathParts = path.split("/");
 			const name = pathParts.pop() || "";
@@ -410,7 +492,7 @@ const fileProcessor: FileProcessor = {
 
 			const { isValid, error } = validateDirectoryName(name);
 			if (!isValid) {
-				throw new Error(error || "Invalid file name");
+				throw new Error(error ?? "Invalid file name");
 			}
 
 			const handle = await this.getHandle(parentPath, { mode: "readwrite" });
@@ -422,7 +504,7 @@ const fileProcessor: FileProcessor = {
 			return { success: true };
 		});
 	},
-	async createDirectory(path, options) {
+	createDirectory(path, options) {
 		return withFileLock(path, async () => {
 			const pathParts = path.split("/");
 			const name = pathParts.pop() || "";
@@ -430,7 +512,7 @@ const fileProcessor: FileProcessor = {
 
 			const { isValid, error } = validateDirectoryName(name);
 			if (!isValid) {
-				throw new Error(error || "Invalid directory name");
+				throw new Error(error ?? "Invalid directory name");
 			}
 
 			const handle = await this.getHandle(parentPath, { mode: "readwrite" });
@@ -446,10 +528,10 @@ const fileProcessor: FileProcessor = {
 	 *
 	 * @experimental Do not use
 	 */
-	async move() {
+	move() {
 		throw new Error("Feature Unimplemented");
 	},
-	async copy(sourcePath, targetPath, options) {
+	copy(sourcePath, targetPath, options) {
 		return withFileLock(targetPath, async () => {
 			const targetSegments = pathToSegments(targetPath);
 			let targetName = targetSegments.pop() || "";

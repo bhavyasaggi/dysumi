@@ -60,23 +60,23 @@ function DirectoryTreeBody(props: DirectoryTreeProps) {
 			{processing || isError ? (
 				<DirectoryTreeHeader
 					{...props}
-					disabled={props.disabled || processing}
+					disabled={props.disabled ?? processing}
 					name={processing ? "processing..." : JSON.stringify(error)}
 					error={processing ? undefined : JSON.stringify(error)}
 					loading={processing}
 				/>
 			) : null}
-			{!processing && !isError
-				? (data || []).map((entry) => (
+			{processing || isError
+				? null
+				: (data ?? []).map((entry) => (
 						<DirectoryTree
 							key={entry.name}
 							{...props}
 							{...entry}
-							disabled={props.disabled || processing}
-							level={(props.level || 1) + 1}
+							disabled={props.disabled ?? processing}
+							level={(props.level ?? 1) + 1}
 						/>
-					))
-				: null}
+					))}
 		</>
 	);
 }
@@ -108,17 +108,17 @@ const DirectoryTree = React.memo(function DirectoryTreeRaw(
 			<DirectoryTreeHeader
 				opened={opened}
 				onOpened={setOpened}
-				fullPath={data?.fullPath || props.fullPath}
-				isDirectory={data?.isDirectory || props.isDirectory}
-				isFile={data?.isFile || props.isFile}
-				isDirty={data?.isDirty || props.isDirty}
-				mimetype={data?.mimetype || props.mimetype}
-				size={data?.size || props.size}
-				lastModified={data?.lastModified || props.lastModified}
-				disabled={props.disabled || processing}
-				level={props.level || 1}
+				fullPath={data?.fullPath ?? props.fullPath}
+				isDirectory={data?.isDirectory ?? props.isDirectory}
+				isFile={data?.isFile ?? props.isFile}
+				isDirty={data?.isDirty ?? props.isDirty}
+				mimetype={data?.mimetype ?? props.mimetype}
+				size={data?.size ?? props.size ?? 0}
+				lastModified={data?.lastModified ?? props.lastModified}
+				disabled={props.disabled ?? processing}
+				level={props.level ?? 1}
 				error={isError ? JSON.stringify(error) : undefined}
-				name={processing ? "processing..." : props.name || data?.name}
+				name={processing ? "processing..." : (props.name ?? data?.name)}
 			/>
 			{processing || data?.isFile || !opened ? null : (
 				<DirectoryTreeBody
@@ -130,14 +130,15 @@ const DirectoryTree = React.memo(function DirectoryTreeRaw(
 					mimetype={props.mimetype}
 					size={props.size}
 					lastModified={props.lastModified}
-					disabled={props.disabled || processing}
-					level={(props.level || 1) + 1}
+					disabled={props.disabled ?? processing}
+					level={(props.level ?? 1) + 1}
 				/>
 			)}
 		</>
 	);
 });
 
-export { DirectoryTreeHeader, DirectoryTreeBody, DirectoryTreeRoot };
+// biome-ignore lint/style/useComponentExportOnlyModules: compound component re-exports
+export { DirectoryTreeBody, DirectoryTreeHeader, DirectoryTreeRoot };
 
 export default DirectoryTree;

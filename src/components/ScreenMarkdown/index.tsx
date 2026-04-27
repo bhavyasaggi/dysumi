@@ -36,8 +36,8 @@ export default function ScreenMarkdown() {
 					path: activeFile.path,
 					content,
 				}).unwrap();
-			} catch (error) {
-				console.error(error);
+			} catch {
+				/* mutation errors handled by RTK */
 			}
 		},
 		2000,

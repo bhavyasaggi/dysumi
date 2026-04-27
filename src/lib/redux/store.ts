@@ -6,22 +6,35 @@ import { interfaceSlice } from "./slices/interface";
 import { sessionSlice } from "./slices/session";
 
 export const makeStore = () => {
-  const store = configureStore({
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware()
-        .concat(webFsApi.middleware)
-        .prepend(storageListener.middleware)
-        .prepend(idbListener.middleware),
-    reducer: combineSlices(
-      sessionSlice,
-      interfaceSlice,
-      webFsApi,
-    ),
-  });
+	const store = configureStore({
+		middleware: (getDefaultMiddleware) =>
+			getDefaultMiddleware({
+				// Ignore serializable check for binary file content
+				// webFsApi handles Uint8Array for binary file operations
+				serializableCheck: {
+					ignoredActions: [
+						"webFsApi/executeQuery/fulfilled",
+						"webFsApi/executeQuery/pending",
+						"webFsApi/executeMutation/fulfilled",
+						"webFsApi/executeMutation/pending",
+					],
+					ignoredActionPaths: [
+						"payload.content",
+						"meta.arg.content",
+						"meta.baseQueryMeta",
+					],
+					ignoredPaths: ["webFsApi.queries", "webFsApi.mutations"],
+				},
+			})
+				.concat(webFsApi.middleware)
+				.prepend(storageListener.middleware)
+				.prepend(idbListener.middleware),
+		reducer: combineSlices(sessionSlice, interfaceSlice, webFsApi),
+	});
 
-  // setupListeners(store.dispatch)
+	// setupListeners(store.dispatch)
 
-  return store;
+	return store;
 };
 
 // Infer the type of makeStore

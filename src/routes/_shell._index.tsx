@@ -4,8 +4,10 @@ import {
 	Center,
 	Container,
 	Group,
+	Marquee,
 	Paper,
 	Space,
+	Text,
 } from "@mantine/core";
 
 import Landing from "@/components/Landing";
@@ -13,11 +15,18 @@ import Icon from "@/lib/ui/Icon";
 import Image from "@/lib/ui/Image";
 import Link from "@/lib/ui/Link";
 
-import Ticker from "@/lib/ui/Ticker";
-
-const extensions = [
+const EXTENSIONS = [
 	".txt",
 	".md",
+	".adoc",
+	".tex",
+	".rst",
+	".fb2",
+	".djvu",
+	".drawio",
+	".excalidraw",
+	".mermaid",
+	".plantuml",
 	".json",
 	".yml",
 	".yaml",
@@ -25,9 +34,16 @@ const extensions = [
 	".csv",
 	".tsv",
 	".ofx",
+	".qif",
+	".qfx",
+	".ledger",
+	".hledger",
 	".mbox",
+	".eml",
 	".ics",
 	".vcf",
+	".epub",
+	".chm",
 	".pdf",
 	".jpg",
 	".jpeg",
@@ -43,9 +59,31 @@ const extensions = [
 	".bin",
 	".dat",
 	".ini",
+	".log",
 	".arb",
-].join("\u00A0\u00A0");
+	".pot",
+	".po",
+	".xlf",
+	".xliff",
+	".xlif",
+	".strings",
+	".kml",
+	".geojson",
+	".http",
+	".rest",
+	".graphql",
+	".har",
+	".curl",
+	".sqlite",
+	".parquet",
+	".arrow",
+	".duckdb",
+	".jwt",
+	".jwk",
+	".well-known",
+];
 
+// biome-ignore lint/style/useComponentExportOnlyModules: React Router convention
 export function meta() {
 	return [{ title: "dysumi" }, { name: "description", content: "Welcome!" }];
 }
@@ -130,16 +168,13 @@ export default function RouteShellIndex() {
 						background: "#000 url('/demo-1.png') right top / cover no-repeat",
 					}}
 				/>
-				<Ticker
-					bg="dark"
-					c="gray"
-					py="xl"
-					fz="h1"
-					fw="bold"
-					separator={"\u00A0\u00A0"}
-				>
-					{extensions}
-				</Ticker>
+				<Marquee bg="dark" py="xl" gap="xl" fadeEdges={false}>
+					{EXTENSIONS.map((ext) => (
+						<Text key={ext} fz="h1" fw="bold" c="gray" span>
+							{ext}
+						</Text>
+					))}
+				</Marquee>
 			</Box>
 		</>
 	);

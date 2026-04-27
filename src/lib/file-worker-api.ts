@@ -8,7 +8,7 @@ export type { FileProcessor, FileProcessorEntry };
 
 let fileWorker: Comlink.Remote<FileProcessor> | null = null;
 
-export async function getFileWorkerApi() {
+export function getFileWorkerApi() {
 	if (!fileWorker) {
 		const worker = new Worker(
 			new URL("./workers/file-worker", import.meta.url),

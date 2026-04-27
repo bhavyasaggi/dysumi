@@ -1,6 +1,9 @@
 import { useComputedColorScheme } from "@mantine/core";
 import { useThrottledCallback } from "@mantine/hooks";
-import Editor, { type EditorProps } from "@monaco-editor/react";
+import Editor, { type EditorProps, type Monaco } from "@monaco-editor/react";
+import { monarchGraphQL } from "@/lib/data/monarch-graphql";
+import { monarchHttp } from "@/lib/data/monarch-http";
+import { monarchLatex } from "@/lib/data/monarch-latex";
 import { useReduxSelector } from "@/lib/redux/hooks";
 import {
 	useReadWebFsFileQuery,
@@ -8,6 +11,84 @@ import {
 } from "@/lib/redux/queries/web-fs/read-write";
 import { selectorInterfaceGetActiveFile } from "@/lib/redux/slices/interface";
 import { extToLanguage } from "@/lib/utils/ext-to-language";
+
+let customLanguagesRegistered = false;
+
+function registerCustomLanguages(monaco: Monaco) {
+	if (customLanguagesRegistered) return;
+	customLanguagesRegistered = true;
+
+	// LaTeX
+	monaco.languages.register({
+		id: "latex",
+		extensions: [".tex", ".latex", ".ltx", ".sty", ".cls", ".bib"],
+		aliases: ["LaTeX", "latex", "TeX"],
+	});
+	monaco.languages.setMonarchTokensProvider("latex", monarchLatex);
+	monaco.languages.setLanguageConfiguration("latex", {
+		comments: { lineComment: "%" },
+		brackets: [
+			["{", "}"],
+			["[", "]"],
+			["(", ")"],
+		],
+		autoClosingPairs: [
+			{ open: "{", close: "}" },
+			{ open: "[", close: "]" },
+			{ open: "(", close: ")" },
+			{ open: "$", close: "$" },
+		],
+		surroundingPairs: [
+			{ open: "{", close: "}" },
+			{ open: "[", close: "]" },
+			{ open: "(", close: ")" },
+			{ open: "$", close: "$" },
+		],
+	});
+
+	// HTTP / REST
+	monaco.languages.register({
+		id: "http",
+		extensions: [".http", ".rest"],
+		aliases: ["HTTP", "REST"],
+	});
+	monaco.languages.setMonarchTokensProvider("http", monarchHttp);
+	monaco.languages.setLanguageConfiguration("http", {
+		comments: { lineComment: "#" },
+		brackets: [
+			["{", "}"],
+			["[", "]"],
+		],
+	});
+
+	// GraphQL
+	monaco.languages.register({
+		id: "graphql",
+		extensions: [".graphql", ".gql"],
+		aliases: ["GraphQL", "gql"],
+	});
+	monaco.languages.setMonarchTokensProvider("graphql", monarchGraphQL);
+	monaco.languages.setLanguageConfiguration("graphql", {
+		comments: { lineComment: "#" },
+		brackets: [
+			["{", "}"],
+			["[", "]"],
+			["(", ")"],
+		],
+		autoClosingPairs: [
+			{ open: "{", close: "}" },
+			{ open: "[", close: "]" },
+			{ open: "(", close: ")" },
+			{ open: '"', close: '"' },
+		],
+		surroundingPairs: [
+			{ open: "{", close: "}" },
+			{ open: "[", close: "]" },
+			{ open: "(", close: ")" },
+			{ open: '"', close: '"' },
+		],
+	});
+}
 
 export default function ScreenCode(
 	props: Pick<
@@ -38,7 +119,7 @@ export default function ScreenCode(
 		{ skip: fileWithProto },
 	);
 	const [writeWebFsFileMutation] = useWriteWebFsFileMutation();
-	const writeWebFsFileMutationThrolled = useThrottledCallback(
+	const writeWebFsFileMutationThrottled = useThrottledCallback(
 		async (content: string) => {
 			if (!activeFile?.path) {
 				return;
@@ -48,8 +129,8 @@ export default function ScreenCode(
 					path: activeFile.path,
 					content,
 				}).unwrap();
-			} catch (error) {
-				console.error(error);
+			} catch {
+				/* mutation errors handled by RTK */
 			}
 		},
 		2000,
@@ -83,11 +164,12 @@ export default function ScreenCode(
 
 	return (
 		<Editor
+			beforeMount={registerCustomLanguages}
 			theme={computedColorScheme === "light" ? "light" : "vs-dark"}
 			language={activeFile?.language || extToLanguage(activeFile?.path || "")}
 			path={activeFile?.path}
 			defaultValue={webFsFile?.content || ""}
-			onChange={(content) => writeWebFsFileMutationThrolled(content || "")}
+			onChange={(content) => writeWebFsFileMutationThrottled(content || "")}
 			{...props}
 		/>
 	);

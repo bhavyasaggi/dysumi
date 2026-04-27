@@ -1,14 +1,7 @@
-import {
-	Anchor,
-	Box,
-	Divider,
-	NavLink,
-	Text,
-	UnstyledButton,
-} from "@mantine/core";
+import { Box, NavLink, Text, UnstyledButton } from "@mantine/core";
 import type { FeatherIconNames } from "feather-icons";
 import { useState } from "react";
-import InterfaceShellPanel from "@/components/InterfaceShell/panel";
+
 import { useReduxDispatch } from "@/lib/redux/hooks";
 import {
 	useCloseWebFsHandleMutation,
@@ -117,43 +110,41 @@ export default function PanelWelcome() {
 	const [openWebFsHandleMutation] = useOpenWebFsHandleMutation();
 
 	return (
-		<InterfaceShellPanel title="Welcome!">
-			<Box p="sm">
-				<Text c="gray">Get Started.</Text>
+		<Box p="sm">
+			<Text c="gray">Get Started.</Text>
 
-				<NavLink
-					component={UnstyledButton}
-					active
-					variant="subtle"
-					label="Create a new File"
-					leftSection={
-						<Icon icon="file-plus" height={16} width={16} title="New File" />
+			<NavLink
+				component={UnstyledButton}
+				active
+				variant="subtle"
+				label="Create a new File"
+				leftSection={
+					<Icon icon="file-plus" height={16} width={16} title="New File" />
+				}
+			/>
+			<NavLink
+				component={UnstyledButton}
+				active
+				variant="subtle"
+				label="Open a Folder"
+				leftSection={
+					<Icon icon="folder" height={16} width={16} title="Open Folder" />
+				}
+				onClick={async () => {
+					try {
+						const data = await openWebFsHandleMutation("directory").unwrap();
+						dispatch(
+							actionInterfaceUpdate({
+								viewPanel: "explorer",
+								workspacePath: data.fullPath,
+							}),
+						);
+					} catch (error) {
+						window.alert(String(error));
 					}
-				/>
-				<NavLink
-					component={UnstyledButton}
-					active
-					variant="subtle"
-					label="Open a Folder"
-					leftSection={
-						<Icon icon="folder" height={16} width={16} title="Open Folder" />
-					}
-					onClick={async () => {
-						try {
-							const data = await openWebFsHandleMutation("directory").unwrap();
-							dispatch(
-								actionInterfaceUpdate({
-									viewPanel: "explorer",
-									workspacePath: data.fullPath,
-								}),
-							);
-						} catch (error) {
-							window.alert(String(error));
-						}
-					}}
-				/>
-				<PanelWelcomeRecent />
-			</Box>
-		</InterfaceShellPanel>
+				}}
+			/>
+			<PanelWelcomeRecent />
+		</Box>
 	);
 }

@@ -1,5 +1,6 @@
 import { Container, Typography } from "@mantine/core";
 
+// biome-ignore lint/style/useComponentExportOnlyModules: React Router convention
 export function meta() {
 	return [
 		{ title: "Privacy Policy" },
@@ -1980,7 +1981,7 @@ export default function RouteShellPrivacyPolicy() {
 					We do not process consumer’s sensitive personal information. / If the
 					business collects any of the following:
 				</span>
-				<p></p>
+				<p />
 				<ul>
 					<li>
 						<span style={{ color: "#8351f9" }}>

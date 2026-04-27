@@ -8,26 +8,32 @@ import {
 	Stack,
 } from "@mantine/core";
 import type { FeatherIconNames } from "feather-icons";
-import type React from "react";
-import { Activity, useEffect, useRef } from "react";
+import React, { useEffect, useId } from "react";
 import {
-	type ImperativePanelGroupHandle,
 	Panel,
-	PanelGroup,
-	PanelResizeHandle,
+	Group as PanelGroup,
+	Separator,
+	useGroupRef,
 } from "react-resizable-panels";
+
 import Icon from "@/lib/ui/Icon";
 import Image from "@/lib/ui/Image";
 import Link from "@/lib/ui/Link";
 
+import InterfaceShellActivity from "./Activity";
+import InterfaceShellPanel from "./Panel";
+import InterfaceShellStatus from "./Status";
 import styles from "./styles.module.scss";
 
-type RenderFunctionType = (
-	panel: string | undefined,
-	options: {
-		loading?: boolean;
-	},
-) => React.ReactNode;
+// Hoisted static config objects — avoids re-creation on every render
+const FOOTER_CONFIG = { height: "1.8em" } as const;
+const NAVBAR_CONFIG = { width: "46px", breakpoint: "0" } as const;
+const NAVBAR_STYLES = { navbar: { alignItems: "center" } } as const;
+const ASIDE_BORDER_STYLE = {
+	borderRight: "1px solid var(--mantine-color-default-border)",
+	backgroundColor: "var(--mantine-color-default-hover)",
+} as const;
+const OVERFLOW_STYLE = { overflow: "auto" } as const;
 
 export interface InterfaceShellProps {
 	readonly loading?: boolean;
@@ -36,13 +42,11 @@ export interface InterfaceShellProps {
 		id: string;
 		icon: FeatherIconNames;
 		title: string;
-		render?: RenderFunctionType;
+		Component?: React.ComponentType;
 	}>;
 	readonly onPanel: (panel: string | undefined) => void;
 	readonly onSettings?: () => void;
 	readonly children?: React.ReactNode;
-	readonly renderActivity?: RenderFunctionType;
-	readonly renderFooter?: RenderFunctionType;
 }
 
 // Controlled
@@ -50,46 +54,48 @@ export default function InterfaceShell(props: InterfaceShellProps) {
 	const viewLoading = props.loading;
 	const viewPanel = props.panel;
 
-	const hasPanels = props.panelData && props.panelData.length > 0;
+	const hasPanels = Boolean(props.panelData && props.panelData.length > 0);
 
-	const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
+	const reactId = useId();
+	const asidePanelId = `resizable-aside-${reactId}`;
+	const mainPanelId = `resizable-main-${reactId}`;
+
+	const panelGroupRef = useGroupRef();
+	// biome-ignore lint/correctness/useExhaustiveDependencies: resize-bug
 	useEffect(() => {
-		const [asidePanelWidth] = panelGroupRef.current?.getLayout() || [];
+		const layout = panelGroupRef.current?.getLayout();
+		const asidePanelWidth = layout?.[asidePanelId] ?? 0;
 		if (viewPanel && asidePanelWidth <= 0) {
-			panelGroupRef.current?.setLayout([20, 80]);
+			panelGroupRef.current?.setLayout({
+				[asidePanelId]: 20,
+				[mainPanelId]: 80,
+			});
 		}
 		if (!viewPanel && asidePanelWidth > 0) {
-			panelGroupRef.current?.setLayout([0, 100]);
+			panelGroupRef.current?.setLayout({
+				[asidePanelId]: 0,
+				[mainPanelId]: 100,
+			});
 		}
 	}, [viewPanel]);
 
 	const main = (
 		<Stack h="calc(100dvh - 1.8em)" gap={0}>
 			<Box flex="0 0 auto">
-				{props.renderActivity?.(viewPanel, { loading: viewLoading })}
-				{props.renderActivity ? <Divider /> : null}
+				<InterfaceShellActivity />
+				<Divider />
 			</Box>
-			<Box flex="1 1 auto" style={{ overflow: "auto" }}>
+			<Box flex="1 1 auto" style={OVERFLOW_STYLE}>
 				{props.children}
 			</Box>
 		</Stack>
 	);
 
 	return (
-		<AppShell
-			footer={{ height: "1.8em" }}
-			navbar={{
-				width: "46px",
-				breakpoint: "0",
-			}}
-		>
+		<AppShell footer={FOOTER_CONFIG} navbar={NAVBAR_CONFIG}>
 			<AppShell.Navbar
 				bg="var(--mantine-color-disabled)"
-				styles={{
-					navbar: {
-						alignItems: "center",
-					},
-				}}
+				styles={NAVBAR_STYLES}
 			>
 				<AppShell.Section grow>
 					<ActionIcon.Group orientation="vertical">
@@ -144,17 +150,16 @@ export default function InterfaceShell(props: InterfaceShellProps) {
 			</AppShell.Navbar>
 			<AppShell.Main>
 				{viewLoading ? (
-					<Center my="xl" p="xl">
+					<Center p="xl">
 						<Loader color="gray" size="xl" type="bars" />
 					</Center>
 				) : null}
 				{!viewLoading && hasPanels ? (
 					<PanelGroup
-						ref={panelGroupRef}
-						autoSaveId="__resizable-aside-main"
-						// storage={memoryPanelStorage}
-						direction="horizontal"
-						onLayout={([layoutAside]) => {
+						groupRef={panelGroupRef}
+						orientation="horizontal"
+						onLayoutChange={(layout) => {
+							const layoutAside = layout[asidePanelId] ?? 0;
 							if (layoutAside <= 0) {
 								props.onPanel(undefined);
 							} else if (!viewPanel) {
@@ -163,44 +168,39 @@ export default function InterfaceShell(props: InterfaceShellProps) {
 						}}
 					>
 						<Panel
-							id="__resizable-aside"
-							minSize={5}
+							id={asidePanelId}
+							minSize="5%"
 							collapsible
-							defaultSize={20}
-							data-panel-active-id={viewPanel || ""}
+							defaultSize="20%"
+							data-panel-active-id={viewPanel ?? ""}
 							className={styles.panelAside}
 						>
-							<Box
-								h="calc(100dvh - 1.8em)"
-								style={{
-									borderRight: "1px solid var(--mantine-color-default-border)",
-									backgroundColor: "var(--mantine-color-default-hover)",
-								}}
-							>
-								{(props.panelData || []).map((panelItem) => (
-									<Activity
+							<Box h="calc(100dvh - 1.8em)" style={ASIDE_BORDER_STYLE}>
+								{(props.panelData ?? []).map((panelItem) => (
+									<React.Activity
 										key={panelItem.id}
 										mode={panelItem.id === viewPanel ? "visible" : "hidden"}
 									>
-										{panelItem.render?.(viewPanel, {
-											loading: viewLoading,
-										})}
-									</Activity>
+										{panelItem.Component ? (
+											<InterfaceShellPanel title={panelItem.title}>
+												<panelItem.Component />
+											</InterfaceShellPanel>
+										) : null}
+									</React.Activity>
 								))}
 							</Box>
 						</Panel>
-						<PanelResizeHandle />
-						<Panel id="__resizable-main" minSize={10} defaultSize={80}>
+						<Separator />
+						<Panel id={mainPanelId} minSize="10%" defaultSize="80%">
 							{main}
 						</Panel>
 					</PanelGroup>
 				) : null}
-				{!viewLoading && !hasPanels ? main : null}
+				{/* biome-ignore lint/nursery/noLeakedRender: main is a JSX element, not a primitive */}
+				{viewLoading || hasPanels ? null : main}
 			</AppShell.Main>
 			<AppShell.Footer display="flex" bg="var(--mantine-color-disabled)">
-				{props.renderFooter?.(viewPanel, {
-					loading: viewLoading,
-				})}
+				<InterfaceShellStatus />
 			</AppShell.Footer>
 		</AppShell>
 	);

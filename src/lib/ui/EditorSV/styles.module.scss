@@ -1,0 +1,107 @@
+.container {
+	width: 100%;
+	height: 100%;
+}
+
+// Dark theme overrides for handsontable
+// Scoped to [data-mantine-color-scheme="dark"] so light mode is untouched
+:global([data-mantine-color-scheme="dark"]) {
+	// Cell backgrounds
+	.container :global(.handsontable) td,
+	.container :global(.handsontable) th,
+	.container :global(.handsontable) {
+		background-color: var(--mantine-color-body);
+		color: var(--mantine-color-text);
+	}
+
+	// Borders
+	.container :global(.handsontable) td,
+	.container :global(.handsontable) th {
+		border-color: var(--mantine-color-default-border);
+	}
+
+	.container :global(.handsontable) :global(.wtBorder) {
+		background-color: var(--mantine-color-blue-filled);
+	}
+
+	// Row & column headers
+	.container :global(.handsontable) thead th,
+	.container :global(.handsontable) tbody th {
+		background-color: var(--mantine-color-default);
+		color: var(--mantine-color-dimmed);
+	}
+
+	// Highlighted headers
+	.container :global(.handsontable) thead th:global(.ht__highlight),
+	.container :global(.handsontable) tbody th:global(.ht__highlight) {
+		background-color: var(--mantine-color-dark-4);
+	}
+
+	.container :global(.handsontable) thead th:global(.ht__active_highlight),
+	.container :global(.handsontable) tbody th:global(.ht__active_highlight) {
+		background-color: var(--mantine-color-dark-3);
+		color: var(--mantine-color-text);
+	}
+
+	// Current row/col highlight
+	.container :global(.handsontable) td:global(.currentRow) {
+		background-color: var(--mantine-color-dark-6);
+	}
+
+	.container :global(.handsontable) td:global(.currentCol) {
+		background-color: var(--mantine-color-dark-6);
+	}
+
+	// Selection area
+	.container :global(.handsontable) td:global(.area) {
+		background-color: var(--mantine-color-blue-light);
+	}
+
+	// Context menu
+	.container :global(.htContextMenu) {
+		:global(.htCore) td {
+			background-color: var(--mantine-color-default);
+			color: var(--mantine-color-text);
+			border-color: var(--mantine-color-default-border);
+		}
+
+		:global(.htCore) td:global(.current),
+		:global(.htCore) td:hover {
+			background-color: var(--mantine-color-default-hover);
+		}
+
+		:global(.htCore) td:global(.htSeparator) {
+			border-bottom-color: var(--mantine-color-default-border);
+		}
+
+		:global(.htCore) td:global(.htDisabled) {
+			color: var(--mantine-color-dimmed);
+		}
+	}
+
+	// Comments
+	.container :global(.htCommentTextArea) {
+		background-color: var(--mantine-color-default);
+		color: var(--mantine-color-text);
+		border-color: var(--mantine-color-default-border);
+	}
+
+	// Autocomplete / dropdown
+	.container :global(.handsontableInput),
+	.container :global(.handsontableInputHolder) {
+		background-color: var(--mantine-color-body);
+		color: var(--mantine-color-text);
+	}
+
+	// Fill handle
+	.container :global(.handsontable) :global(.wtBorder):global(.corner) {
+		background-color: var(--mantine-color-blue-filled);
+	}
+
+	// Column sorting arrows
+	.container :global(.handsontable) :global(.columnSorting):global(.ascending)::after,
+	.container :global(.handsontable) :global(.columnSorting):global(.descending)::after {
+		border-bottom-color: var(--mantine-color-text);
+		border-top-color: var(--mantine-color-text);
+	}
+}

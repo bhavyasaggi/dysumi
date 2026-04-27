@@ -16,7 +16,6 @@ import type React from "react";
 import { useEffect, useRef } from "react";
 import { Provider } from "react-redux";
 import { useNavigation } from "react-router";
-import DynamicBoundary from "@/components/DynamicBoundary";
 import { makeStore, type ReduxStore } from "@/lib/redux/store";
 
 import type { Route } from "./+types/root";
@@ -25,6 +24,7 @@ const theme = createTheme({
 	defaultRadius: 0,
 });
 
+// biome-ignore lint/style/useComponentExportOnlyModules: React Router convention
 export const links: Route.LinksFunction = () => [];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -71,11 +71,11 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 		<main className="pt-16 p-4 container mx-auto">
 			<h1>{message}</h1>
 			<p>{details}</p>
-			{stack && (
+			{stack ? (
 				<pre className="w-full p-4 overflow-x-auto">
 					<code>{stack}</code>
 				</pre>
-			)}
+			) : null}
 		</main>
 	);
 }
@@ -104,9 +104,7 @@ export default function App() {
 		<MantineProvider theme={theme} defaultColorScheme="light">
 			<Provider store={storeRef.current}>
 				<AppProgress />
-				<DynamicBoundary>
-					<Outlet />
-				</DynamicBoundary>
+				<Outlet />
 			</Provider>
 		</MantineProvider>
 	);

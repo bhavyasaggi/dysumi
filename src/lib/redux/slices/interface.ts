@@ -20,7 +20,7 @@ type InitialStateType = {
 
 const LOCALSTORAGE_KEY = "__slice_interface";
 
-const initialStateResolver: () => InitialStateType = () => {
+const initialStateResolver = (): InitialStateType => {
 	let storageValue: Record<string, unknown> | undefined;
 	try {
 		storageValue = JSON.parse(
@@ -29,15 +29,14 @@ const initialStateResolver: () => InitialStateType = () => {
 	} catch {
 		// Gulp
 	}
-	const { viewMode, viewPanel, viewNotificationMuted } = storageValue || {};
+	const { viewPanel, viewNotificationMuted } = storageValue ?? {};
 	return {
 		isReady: Boolean(globalThis.localStorage),
-		viewMode: viewMode ?? "normal",
-		viewPanel: viewPanel ?? undefined,
-		viewNotificationMuted: viewNotificationMuted ?? false,
+		viewPanel: (viewPanel as string) ?? "welcome",
+		viewNotificationMuted: (viewNotificationMuted as boolean) ?? false,
 		openFiles: [{ name: "Untitled", path: "untitled:__init.md" }],
 		activeFile: "untitled:__init.md",
-	} as unknown as InitialStateType;
+	};
 };
 
 export const interfaceSlice = createSlice({
@@ -65,7 +64,7 @@ export const interfaceSlice = createSlice({
 			const nextOpenFiles = state.openFiles.filter(
 				(f) => f.path !== action.payload,
 			);
-			if (!nextOpenFiles.length) {
+			if (nextOpenFiles.length === 0) {
 				nextOpenFiles.push({
 					name: "Untitled",
 					path: `untitled:${Math.random().toString(36).slice(2, 10)}.md`,

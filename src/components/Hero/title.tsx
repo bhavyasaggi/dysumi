@@ -31,6 +31,7 @@ export default function HeroTitle({
 		const canvas = canvasRef.current;
 		if (!canvas) return;
 
+		// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: canvas drawing logic with many conditional branches
 		const init = async () => {
 			if (document.fonts?.ready) {
 				await document.fonts.ready;
@@ -55,7 +56,7 @@ export default function HeroTitle({
 				temp.style.fontSize = fontSize;
 				document.body.appendChild(temp);
 				const computedSize = window.getComputedStyle(temp).fontSize;
-				numericFontSize = parseFloat(computedSize);
+				numericFontSize = Number.parseFloat(computedSize);
 				document.body.removeChild(temp);
 			}
 

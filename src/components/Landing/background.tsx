@@ -123,7 +123,6 @@ export default function LandingBackground({
 
 		const gl = canvas.getContext("webgl");
 		if (!gl) {
-			console.error("WebGL not supported");
 			return;
 		}
 
@@ -136,7 +135,6 @@ export default function LandingBackground({
 			gl.shaderSource(shader, source);
 			gl.compileShader(shader);
 			if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-				console.error("Shader compile error:", gl.getShaderInfoLog(shader));
 				gl.deleteShader(shader);
 				return null;
 			}
@@ -148,7 +146,7 @@ export default function LandingBackground({
 			fragmentShaderSource,
 			gl.FRAGMENT_SHADER,
 		);
-		if (!vertexShader || !fragmentShader) return;
+		if (!(vertexShader && fragmentShader)) return;
 
 		const program = gl.createProgram();
 		if (!program) return;
@@ -156,7 +154,6 @@ export default function LandingBackground({
 		gl.attachShader(program, fragmentShader);
 		gl.linkProgram(program);
 		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-			console.error("Program linking error:", gl.getProgramInfoLog(program));
 			return;
 		}
 		// biome-ignore lint/correctness/useHookAtTopLevel: Not a React Hook
@@ -182,6 +179,7 @@ export default function LandingBackground({
 		const uSizeLocation = gl.getUniformLocation(program, "uSize");
 
 		const startTime = performance.now();
+		let frameId = 0;
 		const render = () => {
 			resizeCanvas();
 			gl.viewport(0, 0, canvas.width, canvas.height);
@@ -194,11 +192,12 @@ export default function LandingBackground({
 			gl.uniform1f(uIntensityLocation, intensity);
 			gl.uniform1f(uSizeLocation, size);
 			gl.drawArrays(gl.TRIANGLES, 0, 6);
-			requestAnimationFrame(render);
+			frameId = requestAnimationFrame(render);
 		};
-		requestAnimationFrame(render);
+		frameId = requestAnimationFrame(render);
 
 		return () => {
+			cancelAnimationFrame(frameId);
 			window.removeEventListener("resize", resizeCanvas);
 		};
 	}, [hue, xOffset, speed, intensity, size]);

@@ -1,7 +1,7 @@
 import { Alert } from "@mantine/core";
 import type React from "react";
 import DirectoryTree, { DirectoryTreeRoot } from "@/components/DirectoryTree";
-import InterfaceShellPanel from "@/components/InterfaceShell/panel";
+
 import { useReduxSelector } from "@/lib/redux/hooks";
 import { useMoveWebFsEntryMutation } from "@/lib/redux/queries/web-fs/modify";
 import {
@@ -21,7 +21,7 @@ export default function PanelExplorer() {
 		typeof DirectoryTreeRoot
 	>["onDragEnd"] = async (event) => {
 		const { active, over } = event;
-		if (!active || !over || active.id === over.id) {
+		if (!(active && over) || active.id === over.id) {
 			return;
 		}
 
@@ -50,35 +50,28 @@ export default function PanelExplorer() {
 	}
 
 	return (
-		<InterfaceShellPanel title="Explorer">
-			<DirectoryTreeRoot onDragEnd={handleDragEnd}>
-				{workspacePath ? (
-					<DirectoryTree
-						defaultOpened={true}
-						name={workspacePath || "OPFS"}
-						fullPath={workspacePath || ""}
-						isDirectory={true}
-						disabled={!isReady || isLoadingMoveWebFsEntry}
-					/>
-				) : (
-					<Alert
-						title="Empty workspace"
-						variant="light"
-						color="gray"
-						icon={
-							<Icon
-								icon="info"
-								height={16}
-								width={16}
-								title="Icon Alert Info"
-							/>
-						}
-						h="calc(100dvh - 1.8rem - 1.8rem)"
-					>
-						Open a folder to continue.
-					</Alert>
-				)}
-			</DirectoryTreeRoot>
-		</InterfaceShellPanel>
+		<DirectoryTreeRoot onDragEnd={handleDragEnd}>
+			{workspacePath ? (
+				<DirectoryTree
+					defaultOpened={true}
+					name={workspacePath || "OPFS"}
+					fullPath={workspacePath || ""}
+					isDirectory={true}
+					disabled={!isReady || isLoadingMoveWebFsEntry}
+				/>
+			) : (
+				<Alert
+					title="Empty workspace"
+					variant="light"
+					color="gray"
+					icon={
+						<Icon icon="info" height={16} width={16} title="Icon Alert Info" />
+					}
+					h="calc(100dvh - 1.8rem - 1.8rem)"
+				>
+					Open a folder to continue.
+				</Alert>
+			)}
+		</DirectoryTreeRoot>
 	);
 }

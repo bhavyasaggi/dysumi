@@ -33,26 +33,36 @@ function LandingTitle({
 	);
 }
 
-function LandingText(props: TextProps & { children?: React.ReactNode }) {
+function LandingText({
+	children,
+	...rest
+}: TextProps & { children?: React.ReactNode }) {
 	return (
-		<Text {...props} className={styles.glitchText}>
-			{props.children}
+		<Text {...rest} className={styles.glitchText}>
+			{children}
 		</Text>
 	);
 }
 
-function LandingItem(props: BoxProps & { children?: React.ReactNode }) {
+function LandingItem({
+	children,
+	className,
+	...rest
+}: BoxProps & { children?: React.ReactNode }) {
 	return (
-		<Box {...props} className={clsx(styles.glitchText, props.className)}>
-			{props.children}
+		<Box {...rest} className={clsx(styles.glitchText, className)}>
+			{children}
 		</Box>
 	);
 }
 
-function Landing(props: BoxProps & { children?: React.ReactNode }) {
+function Landing({
+	children,
+	...rest
+}: BoxProps & { children?: React.ReactNode }) {
 	return (
-		<Box pos="relative" {...props}>
-			{props.children}
+		<Box pos="relative" {...rest}>
+			{children}
 		</Box>
 	);
 }

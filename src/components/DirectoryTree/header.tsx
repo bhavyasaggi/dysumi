@@ -9,7 +9,7 @@ import {
 } from "@mantine/core";
 import { useHover } from "@mantine/hooks";
 import type { FeatherIconNames } from "feather-icons";
-import { Activity, useState } from "react";
+import React, { useState } from "react";
 import { useReduxDispatch, useReduxSelector } from "@/lib/redux/hooks";
 import {
 	actionInterfaceOpenFile,
@@ -17,6 +17,7 @@ import {
 } from "@/lib/redux/slices/interface";
 import Icon from "@/lib/ui/Icon";
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: UI component with many conditional branches
 export default function DirectoryTreeHeader(props: {
 	name: string;
 	fullPath: string;
@@ -39,6 +40,9 @@ export default function DirectoryTreeHeader(props: {
 	const { hovered, ref: hoveredRef } = useHover();
 	const [openContextMenu, setOpenContextMenu] = useState(false);
 
+	// biome-ignore lint/nursery/useNullishCoalescing: intentional boolean OR — falsy values should disable
+	const isInoperable = Boolean(!props.fullPath || props.loading || props.error);
+
 	const {
 		attributes,
 		listeners,
@@ -47,13 +51,12 @@ export default function DirectoryTreeHeader(props: {
 		isDragging,
 	} = useDraggable({
 		id: props.fullPath,
-		disabled: !props.fullPath || props.loading || !!props.error,
+		disabled: isInoperable,
 	});
 
 	const { setNodeRef: setDroppableNodeRef, isOver } = useDroppable({
 		id: props.fullPath,
-		disabled:
-			!props.isDirectory || !props.fullPath || props.loading || !!props.error,
+		disabled: isInoperable || !props.isDirectory,
 	});
 
 	let icon: FeatherIconNames = "file";
@@ -80,7 +83,6 @@ export default function DirectoryTreeHeader(props: {
 			onClose={() => setOpenContextMenu(false)}
 			position="bottom-end"
 			shadow="sm"
-			// width="target"
 			withArrow={true}
 			withOverlay={true}
 			offset={-8}
@@ -94,7 +96,7 @@ export default function DirectoryTreeHeader(props: {
 							setDraggableNodeRef(node);
 						}}
 						style={{
-							paddingLeft: `calc(${props.level || 1} * 0.25rem)`,
+							paddingLeft: `calc(${props.level ?? 1} * 0.25rem)`,
 							transform: transform
 								? `translate3d(${transform.x}px, ${transform.y}px, 0)`
 								: undefined,
@@ -103,7 +105,7 @@ export default function DirectoryTreeHeader(props: {
 						opacity={isDragging ? 0.6 : undefined}
 						{...listeners}
 						{...attributes}
-						disabled={props.disabled || isDragging}
+						disabled={props.disabled ?? isDragging}
 						variant={
 							isActive || isDragging || isOver ? "subtle" : "transparent"
 						}
@@ -156,10 +158,10 @@ export default function DirectoryTreeHeader(props: {
 						>
 							{props.loading ? "loading..." : null}
 							{!props.loading && props.error ? props.error : null}
-							{!props.loading && !props.error ? props.name || "..." : null}
+							{props.loading || props.error ? null : props.name || "..."}
 						</Text>
 					</Button>
-					<Activity
+					<React.Activity
 						mode={
 							openContextMenu ||
 							(hovered && !props.disabled && !isDragging && !isOver)
@@ -174,7 +176,7 @@ export default function DirectoryTreeHeader(props: {
 							aria-label="More Options"
 							title="More Options"
 							onClick={() => {
-								setOpenContextMenu(!openContextMenu);
+								setOpenContextMenu((prev) => !prev);
 							}}
 							onContextMenu={(event) => {
 								event.preventDefault();
@@ -188,7 +190,7 @@ export default function DirectoryTreeHeader(props: {
 								width={14}
 							/>
 						</Button>
-					</Activity>
+					</React.Activity>
 				</Button.Group>
 			</Menu.Target>
 			<Menu.Dropdown p={0}>

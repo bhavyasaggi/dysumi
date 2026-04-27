@@ -1,4 +1,4 @@
-import { createListenerMiddleware } from '@reduxjs/toolkit'
+import { createListenerMiddleware } from "@reduxjs/toolkit";
 
-export const storageListener = createListenerMiddleware()
-export const idbListener = createListenerMiddleware()
+export const storageListener = createListenerMiddleware();
+export const idbListener = createListenerMiddleware();
