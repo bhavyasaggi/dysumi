@@ -9,6 +9,7 @@ import {
 	CALENDAR_EXTENSIONS,
 	EPUB_EXTENSIONS,
 	GRAPHQL_EXTENSIONS,
+	HAR_EXTENSIONS,
 	HEX_EXTENSIONS,
 	IMAGE_EXTENSIONS,
 	KML_EXTENSIONS,
@@ -40,6 +41,7 @@ const ScreenRest = React.lazy(() => import("@/components/ScreenRest"));
 const ScreenGraphQL = React.lazy(() => import("@/components/ScreenGraphQL"));
 const ScreenSV = React.lazy(() => import("@/components/ScreenSV"));
 const ScreenKML = React.lazy(() => import("@/components/ScreenKML"));
+const ScreenHar = React.lazy(() => import("@/components/ScreenHar"));
 
 const PanelExplorer = React.lazy(() => import("@/components/PanelExplorer"));
 const PanelSearch = React.lazy(() => import("@/components/PanelSearch"));
@@ -99,6 +101,8 @@ function getComponent(mode: string, format: string): React.ComponentType {
 		return ScreenSV;
 	} else if (KML_EXTENSIONS.has(format)) {
 		return ScreenKML;
+	} else if (HAR_EXTENSIONS.has(format)) {
+		return ScreenHar;
 	} else if (HEX_EXTENSIONS.has(format)) {
 		return ScreenHex;
 	}

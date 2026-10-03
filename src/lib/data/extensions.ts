@@ -95,3 +95,6 @@ export const GRAPHQL_EXTENSIONS = new Set(["graphql", "gql"]);
 
 // KML/KMZ geographic file extensions
 export const KML_EXTENSIONS = new Set(["kml", "kmz"]);
+
+// HAR (HTTP Archive) file extensions
+export const HAR_EXTENSIONS = new Set(["har"]);
