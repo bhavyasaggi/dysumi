@@ -49,6 +49,11 @@ export interface FileProcessor {
 	 */
 	list(path: string): Promise<FileProcessorEntry[]>;
 	/**
+	 * Relative file paths under a directory, including nested files.
+	 * A newer call stops the previous walk.
+	 */
+	listNames(path: string): Promise<string[]>;
+	/**
 	 * Reads from OPFS if present, else reads from FS
 	 */
 	read(
@@ -83,17 +88,10 @@ export interface FileProcessor {
 		path: string,
 		options?: { force?: boolean },
 	): Promise<{ success: boolean }>;
-	/**
-	 * @abstract Unimplemented
-	 */
-	move(
-		sourcePath: string,
-		targetPath: string,
-		options?: { force?: boolean },
-	): Promise<{ success: boolean }>;
+	rename(path: string, newName: string): Promise<{ success: boolean }>;
 	copy(
 		sourcePath: string,
 		targetPath: string,
 		options?: { force?: boolean },
-	): Promise<{ success: boolean }>;
+	): Promise<{ success: boolean; path: string }>;
 }

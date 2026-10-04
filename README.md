@@ -14,11 +14,26 @@ Built on the [File System Access API](https://developer.mozilla.org/en-US/docs/W
 | Source code | Monaco code editor | [Monaco Editor](https://microsoft.github.io/monaco-editor/) |
 | `.csv` `.tsv` | Tabular spreadsheet | [Handsontable](https://handsontable.com) |
 | `.ics` `.vcs` | Calendar / event wizard | [ical.js](https://github.com/kewisch/ical.js) |
-| `.jpg` `.png` `.webp` `.svg` … | Image editor | [Filerobot](https://github.com/scaleflex/filerobot-image-editor) |
+| `.jpg` `.png` `.webp` … | Image editor | [Filerobot](https://github.com/scaleflex/filerobot-image-editor) |
 | `.pdf` | PDF viewer | [PDF.js](https://mozilla.github.io/pdf.js/) |
 | `.mp4` `.mp3` `.webm` … | Media player + visualizer | [Video.js](https://videojs.com) + [Butterchurn](https://github.com/jberg/butterchurn) |
-| `.bmp` | MS Paint 🎉 | [jspaint.app](https://jspaint.app) + Clippy |
+| `.bmp` | Bitmap preview | Browser image decoder |
 | `.bin` `.dat` `.exe` … | Hex viewer with data inspector | Custom virtualized grid |
+| `.har` | HTTP archive viewer | Custom Mantine viewer |
+| `.excalidraw` | Sketch editor | [Excalidraw](https://excalidraw.com) |
+| `.mermaid` `.mmd` | Diagram preview | [Mermaid](https://github.com/mermaid-js/mermaid) |
+| `.svg` | Preview and optimize | [SVGO](https://svgo.dev) |
+| `.kml` `.kmz` `.tcx` `.geojson` | Map | [MapLibre](https://maplibre.org) |
+| `.arb` `.po` `.pot` `.xliff` `.strings` | Translation catalog | Custom viewer, modelled on [ARB Editor](https://github.com/google/arb-editor) |
+| `.vcf` | vCard contacts | Custom viewer |
+| `.fb2` | FictionBook reader | [foliate-js](https://github.com/johnfactotum/foliate-js) |
+| `.djvu` | DjVu page viewer | [djvu-rs](https://github.com/matyushkin/djvu-rs) |
+| `.chm` | Compiled HTML Help | [web-chm-reader](https://github.com/yukaige/web-chm-reader) |
+| `.mid` `.midi` | MIDI player | In-app Web Audio synthesizer |
+| `.jwt` `.jwk` `.jwks` | Token and key viewer | [jose](https://github.com/panva/jose) |
+| `.torrent` | Torrent viewer | [WebTorrent](https://webtorrent.io) |
+| `.ofx` `.qfx` `.qif` | Statement viewer | [ofx-js](https://github.com/bradenmacdonald/ofx-js) |
+| `.mbox` `.eml` | Mailbox viewer | [postal-mime](https://github.com/postalsys/postal-mime) |
 
 **Workspace:** sidebar panels, resizable panes, tabbed files, drag-and-drop file tree ([dnd-kit](https://dndkit.com)), dark/light theme, navigation progress bar.
 
@@ -72,11 +87,11 @@ graph LR
 
 | Layer | Technology |
 |---|---|
-| Framework | [React](https://react.dev) 19 · [React Router](https://reactrouter.com) 7 (SPA, pre-rendered) |
+| Framework | [React](https://react.dev) 19 · [React Router](https://reactrouter.com) 8 (SPA, pre-rendered) |
 | UI | [Mantine](https://mantine.dev) 9 |
 | State | [Redux Toolkit](https://redux-toolkit.js.org) + RTK Query |
 | Build | [Vite](https://vite.dev) 8 |
-| Language | [TypeScript](https://www.typescriptlang.org) 6 (strict) |
+| Language | [TypeScript](https://www.typescriptlang.org) 7 (strict) |
 | Lint / Format | [Biome](https://biomejs.dev) 2 |
 | Styling | SCSS Modules · PostCSS (Mantine preset) |
 | Workers | [Comlink](https://github.com/GoogleChromeLabs/comlink) |

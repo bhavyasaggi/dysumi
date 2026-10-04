@@ -1,3 +1,4 @@
+// biome-ignore-all lint/style/noExcessiveLinesPerFile: model catalog stays in one list
 // https://github.com/mlc-ai/web-llm/blob/main/src/config.ts#L312
 export const model_list = [
 	// Llama-3.2

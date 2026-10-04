@@ -1,6 +1,6 @@
 import { ActionIcon, Button, Group, Text } from "@mantine/core";
 import type { FeatherIconNames } from "feather-icons";
-import React from "react";
+import React, { useCallback } from "react";
 import { useReduxDispatch, useReduxSelector } from "@/lib/redux/hooks";
 import { useMetaWebFsEntryQuery } from "@/lib/redux/queries/web-fs/meta";
 import {
@@ -21,6 +21,14 @@ export default React.memo(function InterfaceShellActivityItem(props: {
 	const isReady = useReduxSelector(selectorInterfaceGetIsReady);
 	const { currentData, isUninitialized, isLoading, isFetching, isError } =
 		useMetaWebFsEntryQuery({ path: props.path }, { skip: !isReady });
+
+	const openFile = useCallback(() => {
+		dispatch(actionInterfaceOpenFile({ name: props.name, path: props.path }));
+	}, [dispatch, props.name, props.path]);
+
+	const closeFile = useCallback(() => {
+		dispatch(actionInterfaceCloseFile(props.path));
+	}, [dispatch, props.path]);
 
 	let icon: FeatherIconNames = "file";
 	if (!isReady || isUninitialized || isLoading || isFetching) {
@@ -44,23 +52,18 @@ export default React.memo(function InterfaceShellActivityItem(props: {
 				leftSection={
 					<Icon icon={icon} height={14} width={14} title="Icon File" />
 				}
-				onClick={() => {
-					dispatch(
-						actionInterfaceOpenFile({ name: props.name, path: props.path }),
-					);
-				}}
+				onClick={openFile}
 			>
 				<Text span size="xs" maw={120}>
-					{currentData?.name || props.name || "loading..."}
+					{currentData?.name || props.name || "Loading…"}
 				</Text>
 			</Button>
 			{props.children}
 			<ActionIcon
 				variant="transparent"
 				color="gray"
-				onClick={() => {
-					dispatch(actionInterfaceCloseFile(props.path));
-				}}
+				onClick={closeFile}
+				aria-label={`Close ${props.name || "file"}`}
 			>
 				<Icon icon="x" title="Icon Close" height={14} width={14} />
 			</ActionIcon>

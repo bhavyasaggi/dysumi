@@ -4,16 +4,15 @@ import {
 	Code,
 	Divider,
 	Group,
-	Progress,
 	ScrollArea,
 	Stack,
 	Table,
 	Tabs,
 	Text,
-	Tooltip,
 } from "@mantine/core";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
+import RequestCopy from "@/lib/ui/RequestCopy";
 import {
 	formatBytes,
 	formatTime,
@@ -23,6 +22,7 @@ import {
 	statusColor,
 	tryPrettyJson,
 } from "@/lib/utils/har";
+import { fromHarEntry } from "@/lib/utils/http/copyRequest";
 import styles from "./styles.module.scss";
 
 interface ViewerHarProps {
@@ -30,208 +30,35 @@ interface ViewerHarProps {
 	summary: HarSummary;
 }
 
-const TIMING_SEGMENTS = [
-	{ key: "blocked", label: "Stalled", color: "gray" },
-	{ key: "dns", label: "DNS", color: "teal" },
-	{ key: "connect", label: "Connect", color: "orange" },
-	{ key: "ssl", label: "SSL", color: "grape" },
-	{ key: "send", label: "Send", color: "blue" },
-	{ key: "wait", label: "TTFB", color: "green" },
-	{ key: "receive", label: "Download", color: "cyan" },
-] as const;
-
-function WaterfallBar({
-	entry,
-	totalDuration,
-}: {
-	entry: HarEntry;
-	totalDuration: number;
-}) {
-	const total = totalDuration || 1;
-	const offsetPct = (entry.startOffset / total) * 100;
-	const t = entry.timings;
-	const entryTotal = entry.time || 1;
-	const barPct = Math.max((entry.time / total) * 100, 0.5);
-	const gapPct = 100 - offsetPct - barPct;
-	const isError = entry.status >= 400;
-
-	const tooltipLabel = TIMING_SEGMENTS.filter((s) => t[s.key] > 0)
-		.map((s) => `${s.label}: ${formatTime(t[s.key])}`)
-		.concat(`Total: ${formatTime(entry.time)}`)
-		.join("\n");
-
-	return (
-		<Tooltip
-			label={tooltipLabel}
-			multiline
-			withArrow
-			position="left"
-			style={{ whiteSpace: "pre" }}
-		>
-			<Progress.Root size={8} className={styles.waterfallTrack}>
-				{offsetPct > 0 ? (
-					<Progress.Section value={offsetPct} color="transparent" />
-				) : null}
-				{isError ? (
-					<Progress.Section value={barPct} color="red.4" />
-				) : (
-					TIMING_SEGMENTS.map((s) => {
-						const v = t[s.key];
-						if (v <= 0) return null;
-						return (
-							<Progress.Section
-								key={s.key}
-								value={(v / entryTotal) * barPct}
-								color={`${s.color}.4`}
-							/>
-						);
-					})
-				)}
-				{gapPct > 0 ? (
-					<Progress.Section value={gapPct} color="transparent" />
-				) : null}
-			</Progress.Root>
-		</Tooltip>
-	);
-}
-
-function TimingDetail({ entry }: { entry: HarEntry }) {
-	const t = entry.timings;
-	const total = entry.time || 1;
-
-	return (
-		<Stack gap="sm">
-			<Progress.Root size={16}>
-				{TIMING_SEGMENTS.map((s) => {
-					const v = t[s.key];
-					if (v <= 0) return null;
-					return (
-						<Tooltip key={s.key} label={`${s.label}: ${formatTime(v)}`}>
-							<Progress.Section value={(v / total) * 100} color={s.color}>
-								{v / total > 0.12 ? (
-									<Progress.Label>{s.label}</Progress.Label>
-								) : null}
-							</Progress.Section>
-						</Tooltip>
-					);
-				})}
-			</Progress.Root>
-			<Table striped>
-				<Table.Thead>
-					<Table.Tr>
-						<Table.Th>Phase</Table.Th>
-						<Table.Th ta="right">Duration</Table.Th>
-					</Table.Tr>
-				</Table.Thead>
-				<Table.Tbody>
-					{TIMING_SEGMENTS.map((s) => (
-						<Table.Tr key={s.key}>
-							<Table.Td>
-								<Group gap="xs" wrap="nowrap">
-									<Box
-										w={10}
-										h={10}
-										style={{
-											borderRadius: 2,
-											backgroundColor: `var(--mantine-color-${s.color}-4)`,
-											flexShrink: 0,
-										}}
-									/>
-									<Text size="xs">{s.label}</Text>
-								</Group>
-							</Table.Td>
-							<Table.Td ta="right">
-								<Text size="xs">{formatTime(t[s.key])}</Text>
-							</Table.Td>
-						</Table.Tr>
-					))}
-					<Table.Tr>
-						<Table.Td fw={600}>
-							<Text size="xs" fw={600}>
-								Total
-							</Text>
-						</Table.Td>
-						<Table.Td ta="right">
-							<Text size="xs" fw={600}>
-								{formatTime(entry.time)}
-							</Text>
-						</Table.Td>
-					</Table.Tr>
-				</Table.Tbody>
-			</Table>
-		</Stack>
-	);
-}
-
-function HeadersTable({
-	headers,
-}: {
-	headers: { name: string; value: string }[];
-}) {
-	if (headers.length === 0) {
-		return (
-			<Text size="xs" c="dimmed">
-				No headers
-			</Text>
-		);
-	}
-
-	return (
-		<Table striped>
-			<Table.Thead>
-				<Table.Tr>
-					<Table.Th>Name</Table.Th>
-					<Table.Th>Value</Table.Th>
-				</Table.Tr>
-			</Table.Thead>
-			<Table.Tbody>
-				{headers.map((h, i) => (
-					<Table.Tr key={`${h.name}-${i.toString()}`}>
-						<Table.Td fw={500} className={styles.headerName}>
-							{h.name}
-						</Table.Td>
-						<Table.Td className={styles.headerValue}>{h.value}</Table.Td>
-					</Table.Tr>
-				))}
-			</Table.Tbody>
-		</Table>
-	);
-}
-
-function ResponseBody({ content }: { content: string }) {
-	const display = useMemo(() => {
-		const text =
-			content.length > 100_000
-				? `${content.slice(0, 100_000)}\n\n... (truncated)`
-				: content;
-		return tryPrettyJson(text);
-	}, [content]);
-
-	return (
-		<Code block className={styles.codeBlock}>
-			{display}
-		</Code>
-	);
-}
+import {
+	CookieTable,
+	HeadersTable,
+	ResponseBody,
+	TimingDetail,
+	WaterfallBar,
+} from "./parts";
 
 function EntryDetail({ entry }: { entry: HarEntry }) {
 	return (
 		<Box className={styles.detail}>
 			<Stack gap={4} px="sm" py="xs" className={styles.detailHeader}>
-				<Group gap="xs" wrap="nowrap">
-					<Badge
-						color={METHOD_COLORS[entry.method] ?? "gray"}
-						variant="filled"
-						size="sm"
-					>
-						{entry.method}
-					</Badge>
-					<Badge color={statusColor(entry.status)} variant="light" size="sm">
-						{entry.status} {entry.statusText}
-					</Badge>
-					<Text size="xs" c="dimmed">
-						{formatTime(entry.time)}
-					</Text>
+				<Group gap="xs" justify="space-between" wrap="nowrap">
+					<Group gap="xs" wrap="nowrap">
+						<Badge
+							color={METHOD_COLORS[entry.method] ?? "gray"}
+							variant="filled"
+							size="sm"
+						>
+							{entry.method}
+						</Badge>
+						<Badge color={statusColor(entry.status)} variant="light" size="sm">
+							{entry.status} {entry.statusText}
+						</Badge>
+						<Text size="xs" c="dimmed">
+							{formatTime(entry.time)}
+						</Text>
+					</Group>
+					<RequestCopy request={fromHarEntry(entry)} />
 				</Group>
 				<Text size="xs" className={styles.detailUrl}>
 					{entry.url}
@@ -249,6 +76,10 @@ function EntryDetail({ entry }: { entry: HarEntry }) {
 						<Tabs.Tab value="response">Response</Tabs.Tab>
 					) : null}
 					<Tabs.Tab value="timings">Timings</Tabs.Tab>
+					{entry.requestCookies.length > 0 ||
+					entry.responseCookies.length > 0 ? (
+						<Tabs.Tab value="cookies">Cookies</Tabs.Tab>
+					) : null}
 				</Tabs.List>
 
 				<ScrollArea flex="1 1 auto" scrollbars="y">
@@ -276,6 +107,12 @@ function EntryDetail({ entry }: { entry: HarEntry }) {
 												{entry.status} {entry.statusText}
 											</Table.Td>
 										</Table.Tr>
+										{entry.startedDateTime ? (
+											<Table.Tr>
+												<Table.Td fw={500}>Started</Table.Td>
+												<Table.Td>{entry.startedDateTime}</Table.Td>
+											</Table.Tr>
+										) : null}
 									</Table.Tbody>
 								</Table>
 							</div>
@@ -317,6 +154,30 @@ function EntryDetail({ entry }: { entry: HarEntry }) {
 					<Tabs.Panel value="timings" p="sm">
 						<TimingDetail entry={entry} />
 					</Tabs.Panel>
+
+					{entry.requestCookies.length > 0 ||
+					entry.responseCookies.length > 0 ? (
+						<Tabs.Panel value="cookies" p="sm">
+							<Stack gap="md">
+								{entry.requestCookies.length > 0 ? (
+									<div>
+										<Text size="xs" fw={700} mb="xs">
+											Request cookies
+										</Text>
+										<CookieTable cookies={entry.requestCookies} />
+									</div>
+								) : null}
+								{entry.responseCookies.length > 0 ? (
+									<div>
+										<Text size="xs" fw={700} mb="xs">
+											Response cookies
+										</Text>
+										<CookieTable cookies={entry.responseCookies} />
+									</div>
+								) : null}
+							</Stack>
+						</Tabs.Panel>
+					) : null}
 				</ScrollArea>
 			</Tabs>
 		</Box>
@@ -353,17 +214,18 @@ export default function ViewerHar({ entries, summary }: ViewerHarProps) {
 						<Table.Tbody>
 							{entries.map((entry) => {
 								const isError = entry.status >= 400;
+								const toggleEntry = () => {
+									setSelectedIndex(
+										selectedIndex === entry.index ? null : entry.index,
+									);
+								};
 								return (
 									<Table.Tr
 										key={entry.index}
 										className={styles.row}
 										data-selected={selectedIndex === entry.index || undefined}
 										data-error={isError || undefined}
-										onClick={() =>
-											setSelectedIndex(
-												selectedIndex === entry.index ? null : entry.index,
-											)
-										}
+										onClick={toggleEntry}
 									>
 										<Table.Td>
 											<Badge
@@ -383,12 +245,18 @@ export default function ViewerHar({ entries, summary }: ViewerHarProps) {
 												{entry.method}
 											</Badge>
 										</Table.Td>
-										<Table.Td title={entry.path} className={styles.ellipsisCell}>
+										<Table.Td
+											title={entry.path}
+											className={styles.ellipsisCell}
+										>
 											<Text size="xs" truncate="end">
 												{entry.filename}
 											</Text>
 										</Table.Td>
-										<Table.Td title={entry.domain} className={styles.ellipsisCell}>
+										<Table.Td
+											title={entry.domain}
+											className={styles.ellipsisCell}
+										>
 											<Text size="xs" c="dimmed" truncate="end">
 												{entry.domain}
 											</Text>

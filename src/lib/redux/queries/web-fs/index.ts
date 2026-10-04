@@ -8,6 +8,7 @@ export const webFsApi = createApi({
 		"DIRECTORY_STRUCTURE",
 		"FILE_CONTENT",
 		"FILE_METADATA",
+		"WORKSPACE_NAMES",
 	],
 	endpoints: () => ({}),
 });

@@ -6,6 +6,7 @@ import {
 	Textarea,
 	TextInput,
 } from "@mantine/core";
+import { type ChangeEvent, type FocusEvent, useCallback } from "react";
 
 import type { WizardStepProps } from "./types";
 
@@ -14,32 +15,99 @@ export default function WizardDetails({
 	setFormData,
 	event,
 }: WizardStepProps) {
+	const onDescription = useCallback(
+		(input: ChangeEvent<HTMLTextAreaElement>) => {
+			setFormData((prev) => ({
+				...prev,
+				description: input.target.value,
+			}));
+		},
+		[setFormData],
+	);
+	const onUrl = useCallback(
+		(input: ChangeEvent<HTMLInputElement>) => {
+			setFormData((prev) => ({ ...prev, url: input.target.value }));
+		},
+		[setFormData],
+	);
+	const onCategories = useCallback(
+		(input: FocusEvent<HTMLInputElement>) => {
+			setFormData((prev) => ({
+				...prev,
+				categories: input.target.value
+					.split(",")
+					.map((item) => item.trim())
+					.filter(Boolean),
+			}));
+		},
+		[setFormData],
+	);
+	const onResources = useCallback(
+		(input: FocusEvent<HTMLInputElement>) => {
+			setFormData((prev) => ({
+				...prev,
+				resources: input.target.value
+					.split(",")
+					.map((item) => item.trim())
+					.filter(Boolean),
+			}));
+		},
+		[setFormData],
+	);
+	const onLocation = useCallback(
+		(input: ChangeEvent<HTMLInputElement>) => {
+			setFormData((prev) => ({
+				...prev,
+				location: input.target.value,
+			}));
+		},
+		[setFormData],
+	);
+	const onLatitude = useCallback(
+		(value: string | number) => {
+			setFormData((prev) => ({
+				...prev,
+				geo:
+					typeof value === "number"
+						? { lat: value, lon: prev.geo?.lon || 0 }
+						: prev.geo,
+			}));
+		},
+		[setFormData],
+	);
+	const onLongitude = useCallback(
+		(value: string | number) => {
+			setFormData((prev) => ({
+				...prev,
+				geo:
+					typeof value === "number"
+						? { lat: prev.geo?.lat || 0, lon: value }
+						: prev.geo,
+			}));
+		},
+		[setFormData],
+	);
+	const eventKey = event?.uid ? event.uid : "new";
+
 	return (
 		<Stack gap="md" mt="md">
 			<Textarea
 				label="Description"
-				placeholder="Enter description (optional)"
+				placeholder="Enter description (optional)…"
 				rows={4}
 				value={formData.description || ""}
-				onChange={(e) =>
-					setFormData((prev) => ({
-						...prev,
-						description: e.target.value,
-					}))
-				}
+				onChange={onDescription}
 			/>
 
 			<TextInput
 				label="URL"
-				placeholder="https://..."
+				placeholder="https://…"
 				type="url"
+				name="event-url"
+				autoComplete="url"
+				spellCheck={false}
 				value={formData.url || ""}
-				onChange={(e) =>
-					setFormData((prev) => ({
-						...prev,
-						url: e.target.value,
-					}))
-				}
+				onChange={onUrl}
 			/>
 
 			<Grid>
@@ -49,16 +117,8 @@ export default function WizardDetails({
 						placeholder="work, meeting, important"
 						description="Comma-separated (press Tab or click away to apply)"
 						defaultValue={formData.categories?.join(", ") || ""}
-						key={`categories-${event?.uid || "new"}`}
-						onBlur={(e) =>
-							setFormData((prev) => ({
-								...prev,
-								categories: e.target.value
-									.split(",")
-									.map((c) => c.trim())
-									.filter(Boolean),
-							}))
-						}
+						key={`categories-${eventKey}`}
+						onBlur={onCategories}
 					/>
 				</Grid.Col>
 				<Grid.Col span={{ base: 12, sm: 6 }}>
@@ -67,16 +127,8 @@ export default function WizardDetails({
 						placeholder="projector, whiteboard"
 						description="Comma-separated (press Tab or click away to apply)"
 						defaultValue={formData.resources?.join(", ") || ""}
-						key={`resources-${event?.uid || "new"}`}
-						onBlur={(e) =>
-							setFormData((prev) => ({
-								...prev,
-								resources: e.target.value
-									.split(",")
-									.map((c) => c.trim())
-									.filter(Boolean),
-							}))
-						}
+						key={`resources-${eventKey}`}
+						onBlur={onResources}
 					/>
 				</Grid.Col>
 			</Grid>
@@ -85,14 +137,9 @@ export default function WizardDetails({
 
 			<TextInput
 				label="Location"
-				placeholder="Enter location (optional)"
+				placeholder="Enter location (optional)…"
 				value={formData.location || ""}
-				onChange={(e) =>
-					setFormData((prev) => ({
-						...prev,
-						location: e.target.value,
-					}))
-				}
+				onChange={onLocation}
 			/>
 
 			<Grid>
@@ -104,15 +151,7 @@ export default function WizardDetails({
 						max={90}
 						placeholder="-90 to 90"
 						value={formData.geo?.lat}
-						onChange={(value) =>
-							setFormData((prev) => ({
-								...prev,
-								geo:
-									typeof value === "number"
-										? { lat: value, lon: prev.geo?.lon || 0 }
-										: prev.geo,
-							}))
-						}
+						onChange={onLatitude}
 					/>
 				</Grid.Col>
 				<Grid.Col span={{ base: 12, sm: 6 }}>
@@ -123,15 +162,7 @@ export default function WizardDetails({
 						max={180}
 						placeholder="-180 to 180"
 						value={formData.geo?.lon}
-						onChange={(value) =>
-							setFormData((prev) => ({
-								...prev,
-								geo:
-									typeof value === "number"
-										? { lat: prev.geo?.lat || 0, lon: value }
-										: prev.geo,
-							}))
-						}
+						onChange={onLongitude}
 					/>
 				</Grid.Col>
 			</Grid>

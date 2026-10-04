@@ -37,6 +37,10 @@ const isPrintable = (byte: number): boolean => byte >= 0x20 && byte <= 0x7e;
 const byteToAscii = (byte: number): string =>
 	isPrintable(byte) ? String.fromCharCode(byte) : ".";
 
+const ignoreGridKeyDown = () => {
+	/* a11y */
+};
+
 interface DataInspection {
 	label: string;
 	value: string;
@@ -145,18 +149,6 @@ export default function EditorHex({ defaultValue }: EditorHexProps) {
 		};
 	}, [selection]);
 
-	const _copyToClipboard = useCallback(async () => {
-		const range = getSelectionRange();
-		if (!range) {
-			await navigator.clipboard.writeText(byteToHex(data[cursor] ?? 0));
-			return;
-		}
-		const selectedBytes = data.slice(range.start, range.end + 1);
-		await navigator.clipboard.writeText(
-			Array.from(selectedBytes).map(byteToHex).join(" "),
-		);
-	}, [data, cursor, getSelectionRange]);
-
 	const handleKeyDown = useCallback(
 		(e: KeyboardEvent<HTMLDivElement>) => {
 			if (data.length === 0) return;
@@ -254,7 +246,7 @@ export default function EditorHex({ defaultValue }: EditorHexProps) {
 	);
 
 	const handleByteClick = useCallback(
-		(offset: number, e: MouseEvent) => {
+		(offset: number, e: MouseEvent<HTMLSpanElement>) => {
 			if (e.shiftKey && !selection) {
 				setSelection({ start: cursor, end: offset });
 			} else if (e.shiftKey && selection) {
@@ -297,6 +289,22 @@ export default function EditorHex({ defaultValue }: EditorHexProps) {
 		[getSelectionRange],
 	);
 
+	const onByteClick = useCallback(
+		(event: MouseEvent<HTMLSpanElement>) => {
+			const raw = event.currentTarget.dataset.offset;
+			const offset = raw === undefined ? Number.NaN : Number(raw);
+			if (!Number.isInteger(offset) || offset < 0 || offset >= data.length) {
+				return;
+			}
+			handleByteClick(offset, event);
+		},
+		[data.length, handleByteClick],
+	);
+
+	const toggleLittleEndian = useCallback(() => {
+		setLittleEndian((value) => !value);
+	}, []);
+
 	const inspections = useMemo(
 		() => inspectData(data, cursor, littleEndian),
 		[data, cursor, littleEndian],
@@ -331,10 +339,8 @@ export default function EditorHex({ defaultValue }: EditorHexProps) {
 						className={`${styles.hexByte} ${isCursor ? styles.cursor : ""} ${
 							inSelection ? styles.selected : ""
 						} ${isValidOffset ? "" : styles.empty}`}
-						onClick={(e) => isValidOffset && handleByteClick(offset, e)}
-						onKeyDown={() => {
-							/* a11y */
-						}}
+						onClick={onByteClick}
+						onKeyDown={ignoreGridKeyDown}
 						role="gridcell"
 						tabIndex={-1}
 						data-offset={offset}
@@ -350,10 +356,8 @@ export default function EditorHex({ defaultValue }: EditorHexProps) {
 						className={`${styles.asciiByte} ${isCursor ? styles.cursor : ""} ${
 							inSelection ? styles.selected : ""
 						} ${isValidOffset ? "" : styles.empty} ${isPrintable(byte) ? "" : styles.nonPrintable}`}
-						onClick={(e) => isValidOffset && handleByteClick(offset, e)}
-						onKeyDown={() => {
-							/* a11y */
-						}}
+						onClick={onByteClick}
+						onKeyDown={ignoreGridKeyDown}
 						role="gridcell"
 						tabIndex={-1}
 						data-offset={offset}
@@ -375,7 +379,7 @@ export default function EditorHex({ defaultValue }: EditorHexProps) {
 		}
 
 		return result;
-	}, [data, startRow, endRow, cursor, isSelected, handleByteClick]);
+	}, [data, startRow, endRow, cursor, isSelected, onByteClick]);
 
 	return (
 		<Flex className={styles.hexEditor} h="100%">
@@ -422,7 +426,8 @@ export default function EditorHex({ defaultValue }: EditorHexProps) {
 							<ActionIcon
 								variant="subtle"
 								size="xs"
-								onClick={() => setLittleEndian((v) => !v)}
+								onClick={toggleLittleEndian}
+								aria-label="Toggle endianness"
 							>
 								<Text size="xs">{littleEndian ? "LE" : "BE"}</Text>
 							</ActionIcon>

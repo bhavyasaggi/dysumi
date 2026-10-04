@@ -1,12 +1,22 @@
 import { Center, Loader, Stack, Text } from "@mantine/core";
 import { useThrottledCallback } from "@mantine/hooks";
-import { useCallback, useMemo } from "react";
-import { useReduxSelector } from "@/lib/redux/hooks";
+import { useCallback, useMemo, useRef } from "react";
+import {
+	askSaveAs,
+	saveDetail,
+	useFileSaveKeys,
+} from "@/components/EditorApp/shortcuts";
+import { useReduxDispatch, useReduxSelector } from "@/lib/redux/hooks";
 import {
 	useReadWebFsFileBinaryQuery,
 	useWriteWebFsFileBinaryMutation,
 } from "@/lib/redux/queries/web-fs/read-write";
-import { selectorInterfaceGetActiveFile } from "@/lib/redux/slices/interface";
+import {
+	actionInterfaceOpenFile,
+	actionInterfacePushNotification,
+	selectorInterfaceGetActiveFile,
+	selectorInterfaceGetWorkspacePath,
+} from "@/lib/redux/slices/interface";
 import EditorImage from "@/lib/ui/EditorImage";
 
 // Helper to convert base64 to Uint8Array
@@ -46,7 +56,6 @@ const IMAGE_MIME_TYPES: Record<string, string> = {
 	png: "image/png",
 	gif: "image/gif",
 	webp: "image/webp",
-	svg: "image/svg+xml",
 	bmp: "image/bmp",
 	ico: "image/x-icon",
 	tiff: "image/tiff",
@@ -62,7 +71,9 @@ function getMimeType(path: string): string {
 }
 
 export default function ScreenImage() {
+	const dispatch = useReduxDispatch();
 	const activeFile = useReduxSelector(selectorInterfaceGetActiveFile);
+	const workspace = useReduxSelector(selectorInterfaceGetWorkspacePath);
 
 	const fileWithProto = Boolean(activeFile?.path?.includes(":"));
 	const isUntitledImage = activeFile?.path?.startsWith("untitled:");
@@ -80,24 +91,73 @@ export default function ScreenImage() {
 		{ skip: fileWithProto || isUntitledImage },
 	);
 
+	const latest = useRef<Uint8Array | null>(null);
+	const loadedFor = useRef<string | null>(null);
+	const path = activeFile?.path;
+	if (loadedFor.current !== (path ?? null)) {
+		loadedFor.current = path ?? null;
+		latest.current = null;
+	}
+	if (latest.current === null && webFsFile?.content) {
+		latest.current = webFsFile.content;
+	}
 	const [writeWebFsFileBinaryMutation] = useWriteWebFsFileBinaryMutation();
-	const writeWebFsFileBinaryMutationThrottled = useThrottledCallback(
-		async (content: Uint8Array) => {
-			if (!activeFile?.path) {
-				return;
-			}
+	const writeNow = useCallback(
+		async (target: string, content: Uint8Array) => {
+			const name = target.split("/").pop() || target;
 			try {
-				const contentCopy = new Uint8Array(content);
 				await writeWebFsFileBinaryMutation({
-					path: activeFile.path,
-					content: contentCopy,
+					path: target,
+					content: new Uint8Array(content),
 				}).unwrap();
-			} catch {
-				/* mutation errors handled by RTK */
+				dispatch(
+					actionInterfacePushNotification({
+						key: `save:${target}`,
+						tone: "success",
+						title: `Saved ${name}`,
+					}),
+				);
+			} catch (error) {
+				dispatch(
+					actionInterfacePushNotification({
+						key: `save:${target}`,
+						tone: "error",
+						title: `Could not save ${name}`,
+						detail: saveDetail(error),
+					}),
+				);
 			}
+		},
+		[dispatch, writeWebFsFileBinaryMutation],
+	);
+	const writeWebFsFileBinaryMutationThrottled = useThrottledCallback(
+		(content: Uint8Array) => {
+			if (!path || path.includes(":")) return;
+			writeNow(path, content).catch(() => undefined);
 		},
 		2000,
 	);
+	const save = useCallback(async () => {
+		if (latest.current == null || !path) return;
+		if (path.includes(":")) {
+			const chosen = askSaveAs(dispatch, { currentPath: path, workspace });
+			if (!chosen) return;
+			await writeNow(chosen.path, latest.current);
+			dispatch(
+				actionInterfaceOpenFile({ name: chosen.name, path: chosen.path }),
+			);
+			return;
+		}
+		await writeNow(path, latest.current);
+	}, [dispatch, path, workspace, writeNow]);
+	const saveAs = useCallback(async () => {
+		if (latest.current == null || !path) return;
+		const chosen = askSaveAs(dispatch, { currentPath: path, workspace });
+		if (!chosen) return;
+		await writeNow(chosen.path, latest.current);
+		dispatch(actionInterfaceOpenFile({ name: chosen.name, path: chosen.path }));
+	}, [dispatch, path, workspace, writeNow]);
+	useFileSaveKeys({ save, saveAs });
 
 	// Derive image data URL from binary content — no effect needed
 	const imageUrl = useMemo(() => {
@@ -132,8 +192,8 @@ export default function ScreenImage() {
 			height: number;
 			fullName?: string;
 		}) => {
-			// Convert base64 to binary and write to the actual file on disk
 			const binaryData = base64ToUint8Array(imageData.imageBase64);
+			latest.current = binaryData;
 			writeWebFsFileBinaryMutationThrottled(binaryData);
 		},
 		[writeWebFsFileBinaryMutationThrottled],
@@ -141,7 +201,7 @@ export default function ScreenImage() {
 
 	if (processing) {
 		return (
-			<Center py="xl" px="sm" h="100%">
+			<Center py="xl" px="sm" h="100%" role="status" aria-label="Loading…">
 				<Loader size="xl" type="dots" color="gray" />
 			</Center>
 		);
@@ -151,7 +211,9 @@ export default function ScreenImage() {
 		return (
 			<Center py="xl" px="sm" h="100%">
 				<Stack align="center" gap="sm">
-					<Text c="red">Error: {error}</Text>
+					<Text c="red" role="alert">
+						Error: {error}
+					</Text>
 				</Stack>
 			</Center>
 		);
@@ -168,7 +230,7 @@ export default function ScreenImage() {
 	return (
 		<EditorImage
 			key={activeFile?.path}
-			src={imageUrl || undefined}
+			src={imageUrl ? imageUrl : undefined}
 			fileName={fileName}
 			fileExtension={fileExtension}
 			onSave={handleSave}

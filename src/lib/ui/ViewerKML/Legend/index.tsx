@@ -10,7 +10,7 @@ import {
 	useTree,
 } from "@mantine/core";
 import type { FeatherIconNames } from "feather-icons";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Icon from "@/lib/ui/Icon";
 import { DEFAULT_COLOR } from "@/lib/utils/kml";
 import styles from "../styles.module.scss";
@@ -113,6 +113,9 @@ export default function ViewerKMLLegend({
 	featureCount: number;
 }) {
 	const [legendOpen, setLegendOpen] = useState(true);
+	const toggleLegend = useCallback(() => {
+		setLegendOpen((v) => !v);
+	}, []);
 
 	const tree = useTree({
 		initialExpandedState: Object.fromEntries(
@@ -126,14 +129,16 @@ export default function ViewerKMLLegend({
 			<Group gap={0} wrap="nowrap" className={styles.legendHeader}>
 				{legendOpen ? (
 					<Text size="xs" fw={600} flex="1 1 auto" truncate="end" px="xs">
-						Places ({featureCount})
+						Features ({featureCount})
 					</Text>
 				) : null}
 				<ActionIcon
 					variant="subtle"
 					color="gray"
 					size="sm"
-					onClick={() => setLegendOpen((v) => !v)}
+					onClick={toggleLegend}
+					aria-label="Toggle legend"
+					aria-expanded={legendOpen}
 				>
 					<Icon
 						icon={legendOpen ? "chevron-right" : "list"}

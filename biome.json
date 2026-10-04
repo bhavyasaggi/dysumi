@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.4.13/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
@@ -21,7 +21,7 @@
 			"types": "recommended"
 		},
 		"rules": {
-			"recommended": true,
+			"preset": "recommended",
 			"correctness": {
 				"noConstantMathMinMaxClamp": "error",
 				"noConstructorReturn": "error",
@@ -36,6 +36,7 @@
 				"useUniqueElementIds": "warn"
 			},
 			"suspicious": {
+				"noLeakedRender": "warn",
 				"noConfusingVoidType": "error",
 				"noConsole": "warn",
 				"noDoubleEquals": "error",
@@ -55,6 +56,13 @@
 				"useIsArray": "error"
 			},
 			"complexity": {
+				"noUselessReturn": "warn",
+				"useMaxParams": {
+					"level": "error",
+					"options": {
+						"max": 3
+					}
+				},
 				"noExcessiveCognitiveComplexity": {
 					"level": "warn",
 					"options": {
@@ -87,6 +95,12 @@
 				"noDelete": "warn"
 			},
 			"style": {
+				"noExcessiveLinesPerFile": {
+					"level": "error",
+					"options": {
+						"maxLines": 500
+					}
+				},
 				"noParameterAssign": "error",
 				"noNegationElse": "error",
 				"noNestedTernary": "warn",
@@ -117,8 +131,6 @@
 				"noYodaExpression": "error"
 			},
 			"nursery": {
-				"noLeakedRender": "warn",
-				"noUselessReturn": "warn",
 				"useNullishCoalescing": "warn"
 			},
 			"a11y": {

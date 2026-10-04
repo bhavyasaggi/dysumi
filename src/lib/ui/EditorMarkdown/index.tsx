@@ -42,8 +42,6 @@ import {
 import Icon from "@/lib/ui/Icon";
 import styles from "./styles.module.scss";
 
-// TODO: Support for Table, Mermaid, Image (Inline)
-// TODO: Optionally support Markdown Frontmatter, Fullscreen, Print/PDF
 export default function EditorMarkdown(props: {
 	defaultValue?: string;
 	onChange?: (value?: string) => void;
@@ -62,13 +60,10 @@ export default function EditorMarkdown(props: {
 				enableEmoticons: false,
 				forceFallbackImages: false,
 			}),
-			// FileHandler,
-			// HardBreak,
 			Heading,
 			Highlight,
 			History,
 			HorizontalRule,
-			// Image,
 			InvisibleCharacters.configure({
 				visible: false,
 			}),
@@ -77,7 +72,7 @@ export default function EditorMarkdown(props: {
 			NodeRange,
 			Paragraph,
 			Placeholder.configure({
-				placeholder: "Type something...",
+				placeholder: "Type something…",
 			}),
 			BulletList,
 			OrderedList,
@@ -131,7 +126,7 @@ export default function EditorMarkdown(props: {
 			}}
 		>
 			<DragHandle editor={editor}>
-				<ActionIcon variant="subtle" color="gray">
+				<ActionIcon variant="subtle" color="gray" aria-label="Move block">
 					<Icon icon="edit" height={16} width={16} title="Icon Drag" />
 				</ActionIcon>
 			</DragHandle>

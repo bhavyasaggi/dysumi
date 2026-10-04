@@ -13,6 +13,7 @@ const DEFAULT_SQUARE_SIZE = 40;
 export default function HeroBackground(props: {
 	className?: string;
 	style?: React.CSSProperties;
+	paused?: boolean;
 }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const requestRef = useRef<number | null>(null);
@@ -84,28 +85,51 @@ export default function HeroBackground(props: {
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
 		};
 
-		const updateAnimation = () => {
-			const effectiveSpeed = Math.max(DEFAULT_SPEED, 0.1);
+		const reduceMotion = window.matchMedia(
+			"(prefers-reduced-motion: reduce)",
+		).matches;
+		const still = reduceMotion || props.paused;
 
-			gridOffset.current.x =
-				(gridOffset.current.x - effectiveSpeed + DEFAULT_SQUARE_SIZE) %
-				DEFAULT_SQUARE_SIZE;
-			gridOffset.current.y =
-				(gridOffset.current.y - effectiveSpeed + DEFAULT_SQUARE_SIZE) %
-				DEFAULT_SQUARE_SIZE;
+		const updateAnimation = () => {
+			if (!still) {
+				const effectiveSpeed = Math.max(DEFAULT_SPEED, 0.1);
+				gridOffset.current.x =
+					(gridOffset.current.x - effectiveSpeed + DEFAULT_SQUARE_SIZE) %
+					DEFAULT_SQUARE_SIZE;
+				gridOffset.current.y =
+					(gridOffset.current.y - effectiveSpeed + DEFAULT_SQUARE_SIZE) %
+					DEFAULT_SQUARE_SIZE;
+			}
 
 			drawGrid();
+			if (still || document.hidden) return;
 			requestRef.current = requestAnimationFrame(updateAnimation);
 		};
 
+		const onVisibility = () => {
+			if (still) return;
+			if (requestRef.current) cancelAnimationFrame(requestRef.current);
+			requestRef.current = null;
+			if (!document.hidden) {
+				requestRef.current = requestAnimationFrame(updateAnimation);
+			}
+		};
+
+		document.addEventListener("visibilitychange", onVisibility);
 		requestRef.current = requestAnimationFrame(updateAnimation);
 		return () => {
 			window.removeEventListener("resize", resizeCanvas);
+			document.removeEventListener("visibilitychange", onVisibility);
 			if (requestRef.current) cancelAnimationFrame(requestRef.current);
 		};
-	}, []);
+	}, [props.paused]);
 
 	return (
-		<canvas ref={canvasRef} className={props.className} style={props.style} />
+		<canvas
+			ref={canvasRef}
+			className={props.className}
+			style={props.style}
+			inert
+		/>
 	);
 }

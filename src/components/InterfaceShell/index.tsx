@@ -5,16 +5,12 @@ import {
 	Center,
 	Divider,
 	Loader,
+	Splitter,
 	Stack,
 } from "@mantine/core";
+import type { SplitterPaneSize } from "@mantine/hooks";
 import type { FeatherIconNames } from "feather-icons";
-import React, { useEffect, useId } from "react";
-import {
-	Panel,
-	Group as PanelGroup,
-	Separator,
-	useGroupRef,
-} from "react-resizable-panels";
+import React, { useCallback, useState } from "react";
 
 import Icon from "@/lib/ui/Icon";
 import Image from "@/lib/ui/Image";
@@ -34,6 +30,16 @@ const ASIDE_BORDER_STYLE = {
 	backgroundColor: "var(--mantine-color-default-hover)",
 } as const;
 const OVERFLOW_STYLE = { overflow: "auto" } as const;
+const PANE_STYLE = { overflow: "hidden" } as const;
+const OPEN_SIZES: SplitterPaneSize[] = [20, 80];
+const CLOSED_SIZES: SplitterPaneSize[] = [0, 100];
+
+function paneSize(size: SplitterPaneSize | undefined): number {
+	if (typeof size === "number") return size;
+	if (!size) return 0;
+	const value = Number.parseFloat(size);
+	return Number.isFinite(value) ? value : 0;
+}
 
 export interface InterfaceShellProps {
 	readonly loading?: boolean;
@@ -55,29 +61,34 @@ export default function InterfaceShell(props: InterfaceShellProps) {
 	const viewPanel = props.panel;
 
 	const hasPanels = Boolean(props.panelData && props.panelData.length > 0);
+	const [sizes, setSizes] = useState<SplitterPaneSize[]>(
+		viewPanel ? OPEN_SIZES : CLOSED_SIZES,
+	);
+	let sizesOverride = sizes;
+	if (!(hasPanels && viewPanel)) {
+		sizesOverride = CLOSED_SIZES;
+	} else if (paneSize(sizes[0]) <= 0) {
+		sizesOverride = OPEN_SIZES;
+	}
 
-	const reactId = useId();
-	const asidePanelId = `resizable-aside-${reactId}`;
-	const mainPanelId = `resizable-main-${reactId}`;
+	const onPanelClick = useCallback(
+		(event: React.MouseEvent<HTMLButtonElement>) => {
+			const id = event.currentTarget.dataset.panelId;
+			if (!id) return;
+			props.onPanel(id === viewPanel ? undefined : id);
+		},
+		[props.onPanel, viewPanel],
+	);
 
-	const panelGroupRef = useGroupRef();
-	// biome-ignore lint/correctness/useExhaustiveDependencies: resize-bug
-	useEffect(() => {
-		const layout = panelGroupRef.current?.getLayout();
-		const asidePanelWidth = layout?.[asidePanelId] ?? 0;
-		if (viewPanel && asidePanelWidth <= 0) {
-			panelGroupRef.current?.setLayout({
-				[asidePanelId]: 20,
-				[mainPanelId]: 80,
-			});
+	const onSizeChange = (next: SplitterPaneSize[]) => {
+		const aside = paneSize(next[0]);
+		setSizes(next);
+		if (aside <= 0) {
+			if (viewPanel) props.onPanel(undefined);
+			return;
 		}
-		if (!viewPanel && asidePanelWidth > 0) {
-			panelGroupRef.current?.setLayout({
-				[asidePanelId]: 0,
-				[mainPanelId]: 100,
-			});
-		}
-	}, [viewPanel]);
+		if (!viewPanel) props.onPanel(props.panelData?.[0]?.id);
+	};
 
 	const main = (
 		<Stack h="calc(100dvh - 1.8em)" gap={0}>
@@ -99,37 +110,46 @@ export default function InterfaceShell(props: InterfaceShellProps) {
 			>
 				<AppShell.Section grow>
 					<ActionIcon.Group orientation="vertical">
-						<ActionIcon component={Link} to="/" variant="transparent" w="46px">
+						<ActionIcon
+							component={Link}
+							to="/"
+							variant="transparent"
+							w="46px"
+							aria-label="dysumi home"
+						>
 							<Image
 								src="/favicon-32x32.png"
 								fit="contain"
 								height={16}
 								width={16}
-								alt="Logo"
+								alt=""
 							/>
 						</ActionIcon>
-						{props.panelData?.map((panelItem) => {
-							const isActive = panelItem.id === viewPanel;
-							return (
-								<ActionIcon
-									disabled={viewLoading}
-									key={panelItem.id}
-									variant={isActive && !viewLoading ? "filled" : "subtle"}
-									color="gray"
-									size="xl"
-									onClick={() => {
-										props.onPanel(isActive ? undefined : panelItem.id);
-									}}
-								>
-									<Icon
-										icon={panelItem.icon as FeatherIconNames}
-										title={panelItem.title}
-										height={16}
-										width={16}
-									/>
-								</ActionIcon>
-							);
-						})}
+						{props.panelData
+							?.filter((panelItem) => panelItem.id !== "settings")
+							.map((panelItem) => {
+								const isActive = panelItem.id === viewPanel;
+								return (
+									<ActionIcon
+										disabled={viewLoading}
+										key={panelItem.id}
+										variant={isActive && !viewLoading ? "filled" : "subtle"}
+										color="gray"
+										size="xl"
+										data-panel-id={panelItem.id}
+										onClick={onPanelClick}
+										aria-label={panelItem.title}
+										aria-pressed={isActive}
+									>
+										<Icon
+											icon={panelItem.icon as FeatherIconNames}
+											title={panelItem.title}
+											height={16}
+											width={16}
+										/>
+									</ActionIcon>
+								);
+							})}
 					</ActionIcon.Group>
 				</AppShell.Section>
 				<AppShell.Section>
@@ -138,9 +158,13 @@ export default function InterfaceShell(props: InterfaceShellProps) {
 							<ActionIcon
 								disabled={viewLoading}
 								size="xl"
-								variant="subtle"
+								variant={
+									viewPanel === "settings" && !viewLoading ? "filled" : "subtle"
+								}
 								color="gray"
 								onClick={props.onSettings}
+								aria-label="Settings"
+								aria-pressed={viewPanel === "settings"}
 							>
 								<Icon icon="settings" title="Settings" height={16} width={16} />
 							</ActionIcon>
@@ -148,34 +172,32 @@ export default function InterfaceShell(props: InterfaceShellProps) {
 					</ActionIcon.Group>
 				</AppShell.Section>
 			</AppShell.Navbar>
-			<AppShell.Main>
+			{/* biome-ignore lint/correctness/useUniqueElementIds: skip-link target is the single main landmark */}
+			<AppShell.Main id="main" tabIndex={-1}>
 				{viewLoading ? (
-					<Center p="xl">
+					<Center p="xl" role="status" aria-label="Loading…">
 						<Loader color="gray" size="xl" type="bars" />
 					</Center>
 				) : null}
 				{!viewLoading && hasPanels ? (
-					<PanelGroup
-						groupRef={panelGroupRef}
+					<Splitter
 						orientation="horizontal"
-						onLayoutChange={(layout) => {
-							const layoutAside = layout[asidePanelId] ?? 0;
-							if (layoutAside <= 0) {
-								props.onPanel(undefined);
-							} else if (!viewPanel) {
-								props.onPanel(props.panelData?.[0].id || undefined);
-							}
-						}}
+						sizes={sizesOverride}
+						onSizeChange={onSizeChange}
+						h="calc(100dvh - 1.8em)"
+						withHandle={false}
+						lineSize={0}
+						classNames={{ handle: styles.handle }}
 					>
-						<Panel
-							id={asidePanelId}
-							minSize="5%"
+						<Splitter.Pane
+							defaultSize={20}
+							min={5}
 							collapsible
-							defaultSize="20%"
+							style={PANE_STYLE}
 							data-panel-active-id={viewPanel ?? ""}
 							className={styles.panelAside}
 						>
-							<Box h="calc(100dvh - 1.8em)" style={ASIDE_BORDER_STYLE}>
+							<Box h="100%" style={ASIDE_BORDER_STYLE}>
 								{(props.panelData ?? []).map((panelItem) => (
 									<React.Activity
 										key={panelItem.id}
@@ -189,14 +211,18 @@ export default function InterfaceShell(props: InterfaceShellProps) {
 									</React.Activity>
 								))}
 							</Box>
-						</Panel>
-						<Separator />
-						<Panel id={mainPanelId} minSize="10%" defaultSize="80%">
+						</Splitter.Pane>
+						<Splitter.Pane
+							defaultSize={80}
+							min={10}
+							style={PANE_STYLE}
+							className={styles.panelMain}
+						>
 							{main}
-						</Panel>
-					</PanelGroup>
+						</Splitter.Pane>
+					</Splitter>
 				) : null}
-				{/* biome-ignore lint/nursery/noLeakedRender: main is a JSX element, not a primitive */}
+				{/* biome-ignore lint/suspicious/noLeakedRender: main is a JSX element, not a primitive */}
 				{viewLoading || hasPanels ? null : main}
 			</AppShell.Main>
 			<AppShell.Footer display="flex" bg="var(--mantine-color-disabled)">

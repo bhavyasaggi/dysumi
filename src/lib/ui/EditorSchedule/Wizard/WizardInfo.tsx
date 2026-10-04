@@ -13,17 +13,13 @@ import {
 	TextInput,
 } from "@mantine/core";
 import { DateInput, DateTimePicker } from "@mantine/dates";
+import { useCallback } from "react";
 
-import type { CalendarEvent, RecurrenceRule } from "@/lib/utils/ics";
+import type { RecurrenceRule } from "@/lib/utils/ics";
+import { parseScheduleDate } from "../dates";
 
 import type { WizardStepProps } from "./types";
-
-function toDate(value: string | Date | null): Date | undefined {
-	if (!value) return undefined;
-	if (value instanceof Date) return value;
-	const parsed = new Date(value);
-	return Number.isNaN(parsed.getTime()) ? undefined : parsed;
-}
+import { useWizardInfoHandlers } from "./useWizardInfoHandlers";
 
 const WEEKDAYS = [
 	{ value: "MO", label: "Mon" },
@@ -58,26 +54,115 @@ function getStatusOptions(type?: string) {
 	];
 }
 
+function RecurrenceFields({
+	rule,
+	onInterval,
+	onFreq,
+	onByDay,
+	onCount,
+	onUntil,
+}: {
+	rule: RecurrenceRule;
+	onInterval: (value: string | number) => void;
+	onFreq: (value: string | null) => void;
+	onByDay: (value: string[]) => void;
+	onCount: (value: string | number) => void;
+	onUntil: (value: string | null) => void;
+}) {
+	const interval = rule.interval ?? 1;
+	const singular = interval === 1;
+	return (
+		<Grid>
+			<Grid.Col span={{ base: 12, sm: 6 }}>
+				<InputLabel component="div">Repeat every</InputLabel>
+				<Group gap="sm" align="flex-end">
+					<NumberInput
+						aria-label="Repeat interval"
+						min={1}
+						max={99}
+						w={70}
+						value={interval}
+						onChange={onInterval}
+					/>
+					<Select
+						aria-label="Repeat unit"
+						w={120}
+						data={[
+							{ value: "DAILY", label: singular ? "day" : "days" },
+							{ value: "WEEKLY", label: singular ? "week" : "weeks" },
+							{ value: "MONTHLY", label: singular ? "month" : "months" },
+							{ value: "YEARLY", label: singular ? "year" : "years" },
+						]}
+						value={rule.freq}
+						onChange={onFreq}
+					/>
+				</Group>
+			</Grid.Col>
+			{rule.freq === "WEEKLY" ? (
+				<Grid.Col span={{ base: 12, sm: 6 }}>
+					<MultiSelect
+						label="On days"
+						data={WEEKDAYS}
+						value={rule.byDay ?? []}
+						onChange={onByDay}
+					/>
+				</Grid.Col>
+			) : (
+				<Grid.Col span={{ base: 12, sm: 6 }}>
+					<Space />
+				</Grid.Col>
+			)}
+			<Grid.Col span={{ base: 12, sm: 6 }}>
+				<NumberInput
+					label="End after (occurrences)"
+					min={1}
+					placeholder="Forever…"
+					value={rule.count}
+					onChange={onCount}
+				/>
+			</Grid.Col>
+			<Grid.Col span={{ base: 12, sm: 6 }}>
+				<DateInput
+					label="End by date"
+					placeholder="Forever…"
+					value={rule.until ?? null}
+					onChange={onUntil}
+					clearable
+				/>
+			</Grid.Col>
+		</Grid>
+	);
+}
+
 function EndDateField({
 	formData,
 	setFormData,
 }: Pick<WizardStepProps, "formData" | "setFormData">) {
+	const handleDueChange = useCallback(
+		(value: string | null) => {
+			setFormData((prev) => ({ ...prev, due: parseScheduleDate(value) }));
+		},
+		[setFormData],
+	);
+	const handleEndChange = useCallback(
+		(value: string | null) => {
+			setFormData((prev) => ({ ...prev, end: parseScheduleDate(value) }));
+		},
+		[setFormData],
+	);
+
 	if (formData.type === "VTODO") {
 		return formData.allDay ? (
 			<DateInput
 				label="Due Date"
 				value={formData.due ?? null}
-				onChange={(value) =>
-					setFormData((prev) => ({ ...prev, due: toDate(value) }))
-				}
+				onChange={handleDueChange}
 			/>
 		) : (
 			<DateTimePicker
 				label="Due"
 				value={formData.due ?? null}
-				onChange={(value) =>
-					setFormData((prev) => ({ ...prev, due: toDate(value) }))
-				}
+				onChange={handleDueChange}
 			/>
 		);
 	}
@@ -85,37 +170,34 @@ function EndDateField({
 		<DateInput
 			label="End Date"
 			value={formData.end ?? null}
-			onChange={(value) =>
-				setFormData((prev) => ({ ...prev, end: toDate(value) }))
-			}
+			onChange={handleEndChange}
 		/>
 	) : (
 		<DateTimePicker
 			label="End"
 			value={formData.end ?? null}
-			onChange={(value) =>
-				setFormData((prev) => ({ ...prev, end: toDate(value) }))
-			}
+			onChange={handleEndChange}
 		/>
 	);
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: form wizard with many conditional fields
 export default function WizardInfo({ formData, setFormData }: WizardStepProps) {
-	const toggleRecurrence = (enabled: boolean) => {
-		if (enabled) {
-			setFormData((prev) => ({
-				...prev,
-				rrule: { freq: "WEEKLY", interval: 1 },
-			}));
-		} else {
-			setFormData((prev) => ({
-				...prev,
-				rrule: undefined,
-				rruleString: undefined,
-			}));
-		}
-	};
+	const {
+		handleTypeChange,
+		handleSummaryChange,
+		handleAllDayChange,
+		handleStartChange,
+		handleRepeatChange,
+		handleIntervalChange,
+		handleFreqChange,
+		handleByDayChange,
+		handleCountChange,
+		handleUntilChange,
+		handleStatusChange,
+		handleTranspChange,
+		handlePriorityChange,
+		handlePercentCompleteChange,
+	} = useWizardInfoHandlers(setFormData);
 
 	return (
 		<Stack gap="md" mt="md">
@@ -129,28 +211,18 @@ export default function WizardInfo({ formData, setFormData }: WizardStepProps) {
 							{ value: "VJOURNAL", label: "Journal Entry" },
 						]}
 						value={formData.type ?? "VEVENT"}
-						onChange={(value) =>
-							setFormData((prev) => ({
-								...prev,
-								type: value as CalendarEvent["type"],
-								status: undefined,
-							}))
-						}
+						onChange={handleTypeChange}
 					/>
 				</Grid.Col>
 				<Grid.Col span={{ base: 12, sm: 6 }}>
 					<TextInput
 						label="Title"
-						placeholder="Enter title"
+						placeholder="Enter title…"
 						required
 						value={formData.summary ?? ""}
-						onChange={(e) =>
-							setFormData((prev) => ({
-								...prev,
-								summary: e.target.value,
-							}))
-						}
-						autoFocus
+						onChange={handleSummaryChange}
+						autoComplete="off"
+						name="summary"
 					/>
 				</Grid.Col>
 			</Grid>
@@ -158,10 +230,7 @@ export default function WizardInfo({ formData, setFormData }: WizardStepProps) {
 			<Checkbox
 				label="All day event"
 				checked={formData.allDay}
-				onChange={(e) => {
-					const checked = e.currentTarget?.checked ?? false;
-					setFormData((prev) => ({ ...prev, allDay: checked }));
-				}}
+				onChange={handleAllDayChange}
 			/>
 
 			<Grid>
@@ -171,24 +240,14 @@ export default function WizardInfo({ formData, setFormData }: WizardStepProps) {
 							label="Start Date"
 							required
 							value={formData.start ?? null}
-							onChange={(value) =>
-								setFormData((prev) => ({
-									...prev,
-									start: toDate(value),
-								}))
-							}
+							onChange={handleStartChange}
 						/>
 					) : (
 						<DateTimePicker
 							label="Start"
 							required
 							value={formData.start ?? null}
-							onChange={(value) =>
-								setFormData((prev) => ({
-									...prev,
-									start: toDate(value),
-								}))
-							}
+							onChange={handleStartChange}
 						/>
 					)}
 				</Grid.Col>
@@ -202,120 +261,18 @@ export default function WizardInfo({ formData, setFormData }: WizardStepProps) {
 			<Switch
 				label="Repeat this event"
 				checked={Boolean(formData.rrule)}
-				onChange={(e) => toggleRecurrence(e.currentTarget.checked)}
+				onChange={handleRepeatChange}
 			/>
 
 			{formData.rrule ? (
-				<Grid>
-					<Grid.Col span={{ base: 12, sm: 6 }}>
-						<InputLabel component="div">Repeat every</InputLabel>
-						<Group gap="sm" align="flex-end">
-							<NumberInput
-								min={1}
-								max={99}
-								w={70}
-								value={formData.rrule.interval ?? 1}
-								onChange={(value) =>
-									setFormData((prev) => ({
-										...prev,
-										rrule: {
-											...prev.rrule,
-											interval: typeof value === "number" ? value : 1,
-										} as RecurrenceRule,
-									}))
-								}
-							/>
-							<Select
-								w={120}
-								data={[
-									{
-										value: "DAILY",
-										label:
-											(formData.rrule.interval ?? 1) === 1 ? "day" : "days",
-									},
-									{
-										value: "WEEKLY",
-										label:
-											(formData.rrule.interval ?? 1) === 1 ? "week" : "weeks",
-									},
-									{
-										value: "MONTHLY",
-										label:
-											(formData.rrule.interval ?? 1) === 1 ? "month" : "months",
-									},
-									{
-										value: "YEARLY",
-										label:
-											(formData.rrule.interval ?? 1) === 1 ? "year" : "years",
-									},
-								]}
-								value={formData.rrule.freq}
-								onChange={(value) =>
-									setFormData((prev) => ({
-										...prev,
-										rrule: {
-											...prev.rrule,
-											freq: value as RecurrenceRule["freq"],
-										} as RecurrenceRule,
-									}))
-								}
-							/>
-						</Group>
-					</Grid.Col>
-					{formData.rrule.freq === "WEEKLY" ? (
-						<Grid.Col span={{ base: 12, sm: 6 }}>
-							<MultiSelect
-								label="On days"
-								data={WEEKDAYS}
-								value={formData.rrule.byDay || []}
-								onChange={(value) =>
-									setFormData((prev) => ({
-										...prev,
-										rrule: { ...prev.rrule, byDay: value } as RecurrenceRule,
-									}))
-								}
-							/>
-						</Grid.Col>
-					) : (
-						<Grid.Col span={{ base: 12, sm: 6 }}>
-							<Space />
-						</Grid.Col>
-					)}
-					<Grid.Col span={{ base: 12, sm: 6 }}>
-						<NumberInput
-							label="End after (occurrences)"
-							min={1}
-							placeholder="Forever"
-							value={formData.rrule.count}
-							onChange={(value) =>
-								setFormData((prev) => ({
-									...prev,
-									rrule: {
-										...prev.rrule,
-										count: typeof value === "number" ? value : undefined,
-									} as RecurrenceRule,
-								}))
-							}
-						/>
-					</Grid.Col>
-					<Grid.Col span={{ base: 12, sm: 6 }}>
-						<DateInput
-							label="End by date"
-							placeholder="Forever"
-							value={formData.rrule.until ?? null}
-							onChange={(value) =>
-								setFormData((prev) => ({
-									...prev,
-									rrule: {
-										...prev.rrule,
-										until: toDate(value),
-									} as RecurrenceRule,
-								}))
-							}
-							clearable
-						/>
-					</Grid.Col>
-				</Grid>
+				<RecurrenceFields
+					rule={formData.rrule}
+					onInterval={handleIntervalChange}
+					onFreq={handleFreqChange}
+					onByDay={handleByDayChange}
+					onCount={handleCountChange}
+					onUntil={handleUntilChange}
+				/>
 			) : null}
 
 			<Divider label="Status" labelPosition="left" />
@@ -326,12 +283,7 @@ export default function WizardInfo({ formData, setFormData }: WizardStepProps) {
 						label="Status"
 						data={getStatusOptions(formData.type)}
 						value={formData.status ?? ""}
-						onChange={(value) =>
-							setFormData((prev) => ({
-								...prev,
-								status: (value as CalendarEvent["status"]) || undefined,
-							}))
-						}
+						onChange={handleStatusChange}
 						clearable
 					/>
 				</Grid.Col>
@@ -344,12 +296,7 @@ export default function WizardInfo({ formData, setFormData }: WizardStepProps) {
 								{ value: "TRANSPARENT", label: "Free" },
 							]}
 							value={formData.transp ?? "OPAQUE"}
-							onChange={(value) =>
-								setFormData((prev) => ({
-									...prev,
-									transp: value as "OPAQUE" | "TRANSPARENT",
-								}))
-							}
+							onChange={handleTranspChange}
 						/>
 					)}
 				</Grid.Col>
@@ -363,12 +310,7 @@ export default function WizardInfo({ formData, setFormData }: WizardStepProps) {
 							min={1}
 							max={9}
 							value={formData.priority}
-							onChange={(value) =>
-								setFormData((prev) => ({
-									...prev,
-									priority: typeof value === "number" ? value : undefined,
-								}))
-							}
+							onChange={handlePriorityChange}
 						/>
 					</Grid.Col>
 					<Grid.Col span={{ base: 12, sm: 6 }}>
@@ -378,13 +320,7 @@ export default function WizardInfo({ formData, setFormData }: WizardStepProps) {
 							max={100}
 							suffix="%"
 							value={formData.percentComplete}
-							onChange={(value) =>
-								setFormData((prev) => ({
-									...prev,
-									percentComplete:
-										typeof value === "number" ? value : undefined,
-								}))
-							}
+							onChange={handlePercentCompleteChange}
 						/>
 					</Grid.Col>
 				</Grid>

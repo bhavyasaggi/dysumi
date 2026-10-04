@@ -8,15 +8,25 @@ import {
 	Group,
 	Text,
 } from "@mantine/core";
+import { useCallback } from "react";
 import { Outlet } from "react-router";
 import Icon from "@/lib/ui/Icon";
 import Image from "@/lib/ui/Image";
 import Link from "@/lib/ui/Link";
 
+function scrollToTop() {
+	const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+	window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+}
+
 export default function RouteShell() {
+	const onScrollTop = useCallback(() => {
+		scrollToTop();
+	}, []);
 	return (
 		<AppShell>
-			<AppShell.Main mih="400px">
+			{/* biome-ignore lint/correctness/useUniqueElementIds: skip-link target is the single main landmark */}
+			<AppShell.Main id="main" tabIndex={-1} mih="400px">
 				<Outlet />
 				<Box>
 					<Button
@@ -24,6 +34,7 @@ export default function RouteShell() {
 						size="compact-md"
 						variant="light"
 						color="gray"
+						onClick={onScrollTop}
 						leftSection={
 							<Icon
 								icon="chevrons-up"
@@ -79,6 +90,8 @@ export default function RouteShell() {
 										c="gray"
 										component={Link}
 										href="https://twitter.com/"
+										aria-label="dysumi on X"
+										target="_blank"
 									>
 										<Icon
 											icon="twitter"
@@ -93,6 +106,8 @@ export default function RouteShell() {
 										c="gray"
 										component={Link}
 										href="https://github.com/"
+										aria-label="dysumi on GitHub"
+										target="_blank"
 									>
 										<Icon
 											icon="github"
@@ -106,7 +121,7 @@ export default function RouteShell() {
 							<Grid.Col span={{ xs: 12, md: 4 }}>
 								<Box ta="right">
 									<Box mih="32px" mb="sm">
-										<Text size="xl" c="gray" fw="bold">
+										<Text component="h2" size="xl" c="gray" fw="bold" my={0}>
 											About
 										</Text>
 									</Box>

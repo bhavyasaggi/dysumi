@@ -1,47 +1,56 @@
 import { Center, Loader, Stack, Text } from "@mantine/core";
-import JSZip from "jszip";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useReduxSelector } from "@/lib/redux/hooks";
+import {
+	parseQueryError,
+	useParseGeoQuery,
+	useParseKmzQuery,
+} from "@/lib/redux/queries/parse";
 import {
 	useReadWebFsFileBinaryQuery,
 	useReadWebFsFileQuery,
 } from "@/lib/redux/queries/web-fs/read-write";
 import { selectorInterfaceGetActiveFile } from "@/lib/redux/slices/interface";
 import ViewerKML from "@/lib/ui/ViewerKML";
+import { geoDocumentFromWire } from "@/lib/utils/geo/document";
 
-function isKmz(path: string): boolean {
-	return path.split(".").pop()?.toLowerCase() === "kmz";
+const EMPTY_BYTES = new Uint8Array();
+
+type GeoKind = "kml" | "kmz" | "tcx" | "geojson";
+
+function geoKind(path: string): GeoKind {
+	const extension = path.split(".").pop()?.toLowerCase();
+	if (extension === "kmz") return "kmz";
+	if (extension === "tcx") return "tcx";
+	if (extension === "geojson") return "geojson";
+	return "kml";
 }
 
-function resolveError(
-	isError: boolean,
-	error: unknown,
-	fallback: string | null,
-): string | undefined {
-	if (isError) return String((error as Error)?.message);
-	if (fallback) return fallback;
-	return undefined;
+function textGeoKind(kind: GeoKind): "kml" | "tcx" | "geojson" {
+	if (kind === "tcx" || kind === "geojson") return kind;
+	return "kml";
 }
 
-export default function ScreenKML() {
-	const activeFile = useReduxSelector(selectorInterfaceGetActiveFile);
-	const filePath = activeFile?.path ?? "";
-	const kmz = useMemo(() => isKmz(filePath), [filePath]);
+function errorText(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+function useKmlScreen(filePath: string) {
+	const kind = useMemo(() => geoKind(filePath), [filePath]);
 
 	const fileWithProto = Boolean(filePath.includes(":"));
 	const isUntitled = filePath.startsWith("untitled:");
 	const skipFetch = fileWithProto || isUntitled;
+	const binary = kind === "kmz";
 
-	// KML: read as text
 	const {
 		currentData: textData,
 		error: textError,
 		isUninitialized: textUninit,
 		isLoading: textLoading,
 		isError: textIsError,
-	} = useReadWebFsFileQuery({ path: filePath }, { skip: kmz || skipFetch });
+	} = useReadWebFsFileQuery({ path: filePath }, { skip: binary || skipFetch });
 
-	// KMZ: read as binary
 	const {
 		currentData: binaryData,
 		error: binaryError,
@@ -50,57 +59,56 @@ export default function ScreenKML() {
 		isError: binaryIsError,
 	} = useReadWebFsFileBinaryQuery(
 		{ path: filePath },
-		{ skip: !kmz || skipFetch },
+		{ skip: !binary || skipFetch },
 	);
 
-	// Extract KML string from KMZ zip
-	const [extractedKml, setExtractedKml] = useState<string | null>(null);
-	const [extractError, setExtractError] = useState<string | null>(null);
-
+	const textContent = textData?.content;
 	const binaryContent = binaryData?.content;
-	useEffect(() => {
-		if (!(kmz && binaryContent) || binaryContent.length === 0) return;
+	const textKind = textGeoKind(kind);
+	const geo = useParseGeoQuery(
+		{ text: textContent ?? "", geoKind: textKind },
+		{ skip: binary || !textContent },
+	);
+	const kmz = useParseKmzQuery(
+		{ bytes: binaryContent ?? EMPTY_BYTES },
+		{ skip: !(binary && binaryContent) || binaryContent.length === 0 },
+	);
+	const wire = binary ? kmz.data : geo.data;
+	const parseFailed = binary ? kmz.isError : geo.isError;
+	const parseError = binary ? kmz.error : geo.error;
+	const parsing =
+		(binary ? Boolean(binaryContent?.length) : Boolean(textContent)) &&
+		!wire &&
+		!parseFailed;
+	const document = useMemo(
+		() => (wire ? geoDocumentFromWire(wire) : null),
+		[wire],
+	);
 
-		let cancelled = false;
-		(async () => {
-			try {
-				const zip = await JSZip.loadAsync(binaryContent);
-				const kmlFile = zip.file(/\.kml$/i)[0] ?? zip.file(/doc\.kml$/i)[0];
-				if (!kmlFile) {
-					if (!cancelled)
-						setExtractError("No KML file found inside KMZ archive");
-					return;
-				}
-				const content = await kmlFile.async("string");
-				if (!cancelled) setExtractedKml(content);
-			} catch (e) {
-				if (!cancelled)
-					setExtractError(
-						`Failed to extract KMZ: ${e instanceof Error ? e.message : String(e)}`,
-					);
-			}
-		})();
+	const processing = binary
+		? (!skipFetch && binaryUninit) || binaryLoading || parsing
+		: (!skipFetch && textUninit) || textLoading || parsing;
+	let readError: string | undefined;
+	if (binary && binaryIsError) {
+		readError = errorText(binaryError);
+	} else if (!binary && textIsError) {
+		readError = errorText(textError);
+	}
+	const parseMessage = parseFailed
+		? parseQueryError(parseError, "Could not read this map")
+		: undefined;
+	const error = readError ? readError : parseMessage;
+	return { document, processing, error, isUntitled };
+}
 
-		return () => {
-			cancelled = true;
-		};
-	}, [kmz, binaryContent]);
-
-	const kmlString = kmz ? extractedKml : (textData?.content ?? null);
-
-	const processing = kmz
-		? (!skipFetch && binaryUninit) ||
-			binaryLoading ||
-			(binaryData && !extractedKml && !extractError)
-		: (!skipFetch && textUninit) || textLoading;
-
-	const error = kmz
-		? resolveError(binaryIsError, binaryError, extractError)
-		: resolveError(textIsError, textError, null);
+export default function ScreenKML() {
+	const activeFile = useReduxSelector(selectorInterfaceGetActiveFile);
+	const view = useKmlScreen(activeFile?.path ?? "");
+	const { document, processing, error, isUntitled } = view;
 
 	if (processing) {
 		return (
-			<Center py="xl" px="sm" h="100%">
+			<Center py="xl" px="sm" h="100%" role="status" aria-label="Loading…">
 				<Loader size="xl" type="dots" color="gray" />
 			</Center>
 		);
@@ -110,19 +118,21 @@ export default function ScreenKML() {
 		return (
 			<Center py="xl" px="sm" h="100%">
 				<Stack align="center" gap="sm">
-					<Text c="red">Error: {error}</Text>
+					<Text c="red" role="alert">
+						Error: {error}
+					</Text>
 				</Stack>
 			</Center>
 		);
 	}
 
-	if (!kmlString) {
+	if (!document) {
 		return (
 			<Center py="xl" px="sm" h="100%">
-				<Text c="dimmed">No KML data to display</Text>
+				<Text c="dimmed">No geographic data to display</Text>
 			</Center>
 		);
 	}
 
-	return <ViewerKML key={activeFile?.path} kmlString={kmlString} />;
+	return <ViewerKML key={activeFile?.path} document={document} />;
 }

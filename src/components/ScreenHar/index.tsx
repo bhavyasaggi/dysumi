@@ -1,10 +1,9 @@
 import { Center, Loader, Stack, Text } from "@mantine/core";
-import { useMemo } from "react";
 import { useReduxSelector } from "@/lib/redux/hooks";
+import { useParseHarQuery } from "@/lib/redux/queries/parse";
 import { useReadWebFsFileQuery } from "@/lib/redux/queries/web-fs/read-write";
 import { selectorInterfaceGetActiveFile } from "@/lib/redux/slices/interface";
 import ViewerHar from "@/lib/ui/ViewerHar";
-import { parseHar } from "@/lib/utils/har";
 
 export default function ScreenHar() {
 	const activeFile = useReduxSelector(selectorInterfaceGetActiveFile);
@@ -24,17 +23,12 @@ export default function ScreenHar() {
 		{ skip: fileWithProto || isUntitled },
 	);
 
-	const harData = useMemo(() => {
-		if (!webFsFile?.content) return null;
-		try {
-			return parseHar(webFsFile.content);
-		} catch {
-			return null;
-		}
-	}, [webFsFile?.content]);
+	const content = webFsFile?.content;
+	const parsed = useParseHarQuery({ text: content ?? "" }, { skip: !content });
+	const parsing = Boolean(content) && !parsed.data && !parsed.isError;
 
 	const processing =
-		(!(fileWithProto || isUntitled) && isUninitialized) || isLoading;
+		(!(fileWithProto || isUntitled) && isUninitialized) || isLoading || parsing;
 
 	const error = isError
 		? String((webFsFileError as Error)?.message)
@@ -42,7 +36,7 @@ export default function ScreenHar() {
 
 	if (processing) {
 		return (
-			<Center py="xl" px="sm" h="100%">
+			<Center py="xl" px="sm" h="100%" role="status" aria-label="Loading…">
 				<Loader size="xl" type="dots" color="gray" />
 			</Center>
 		);
@@ -52,13 +46,15 @@ export default function ScreenHar() {
 		return (
 			<Center py="xl" px="sm" h="100%">
 				<Stack align="center" gap="sm">
-					<Text c="red">Error: {error}</Text>
+					<Text c="red" role="alert">
+						Error: {error}
+					</Text>
 				</Stack>
 			</Center>
 		);
 	}
 
-	if (!harData) {
+	if (parsed.isError || !parsed.data) {
 		return (
 			<Center py="xl" px="sm" h="100%">
 				<Text c="dimmed">No HAR data to display</Text>
@@ -69,8 +65,8 @@ export default function ScreenHar() {
 	return (
 		<ViewerHar
 			key={activeFile?.path}
-			entries={harData.entries}
-			summary={harData.summary}
+			entries={parsed.data.entries}
+			summary={parsed.data.summary}
 		/>
 	);
 }

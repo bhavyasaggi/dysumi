@@ -12,6 +12,7 @@ import {
 	type CalendarEvent,
 	createNewEvent,
 } from "@/lib/utils/ics";
+import { formatScheduleDate, parseScheduleDate } from "./dates";
 
 import "@mantine/dates/styles.css";
 import "@mantine/schedule/styles.css";
@@ -32,21 +33,15 @@ const EVENT_COLORS: Record<CalendarEvent["type"], string> = {
 	VJOURNAL: "grape",
 };
 
-/** Format a JS Date to `YYYY-MM-DD HH:mm:ss`. */
-function fmtDateTime(d: Date): string {
-	const p = (n: number) => String(n).padStart(2, "0");
-	return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-}
-
 /** Convert CalendarEvent[] → ScheduleEventData[] for the Schedule component.
  *  Passes rruleString natively so Schedule handles recurrence expansion. */
 function toScheduleEvents(events: CalendarEvent[]): ScheduleEventData[] {
 	return events.map((ev) => {
-		const startStr = fmtDateTime(ev.start);
+		const startStr = formatScheduleDate(ev.start);
 		const defaultDuration = ev.type === "VEVENT" ? 3_600_000 : 900_000;
 		const endStr = ev.end
-			? fmtDateTime(ev.end)
-			: fmtDateTime(new Date(ev.start.getTime() + defaultDuration));
+			? formatScheduleDate(ev.end)
+			: formatScheduleDate(new Date(ev.start.getTime() + defaultDuration));
 
 		const base = {
 			id: ev.uid,
@@ -63,7 +58,7 @@ function toScheduleEvents(events: CalendarEvent[]): ScheduleEventData[] {
 				dtstart: startStr,
 			};
 			if (ev.exdate && ev.exdate.length > 0) {
-				recurrence.exdate = ev.exdate.map((d) => fmtDateTime(d));
+				recurrence.exdate = ev.exdate.map((d) => formatScheduleDate(d));
 			}
 			return { ...base, recurrence } as ScheduleEventData;
 		}
@@ -123,12 +118,15 @@ export default function EditorSchedule({
 		}) => {
 			if (readOnly) return;
 			const seriesId = String(eventId).split("::")[0];
+			const start = parseScheduleDate(newStart);
+			const end = parseScheduleDate(newEnd);
+			if (!(start && end)) return;
 			const newEvents = calendarData.events.map((ev) =>
 				ev.uid === seriesId
 					? {
 							...ev,
-							start: new Date(newStart),
-							end: new Date(newEnd),
+							start,
+							end,
 							lastModified: new Date(),
 						}
 					: ev,
@@ -153,22 +151,31 @@ export default function EditorSchedule({
 		[readOnly, calendarData.events, openModal],
 	);
 
-	const handleTimeSlotClick = useCallback(
-		({ slotStart, slotEnd }: { slotStart: string; slotEnd: string }) =>
-			openNewEvent({ start: new Date(slotStart), end: new Date(slotEnd) }),
+	const openRange = useCallback(
+		(startValue: string, endValue: string, allDay = false) => {
+			const start = parseScheduleDate(startValue);
+			const end = parseScheduleDate(endValue);
+			if (!(start && end)) return;
+			openNewEvent(allDay ? { start, end, allDay } : { start, end });
+		},
 		[openNewEvent],
 	);
+	const handleTimeSlotClick = useCallback(
+		({ slotStart, slotEnd }: { slotStart: string; slotEnd: string }) =>
+			openRange(slotStart, slotEnd),
+		[openRange],
+	);
 	const handleSlotDragEnd = useCallback(
-		(rangeStart: string, rangeEnd: string) =>
-			openNewEvent({ start: new Date(rangeStart), end: new Date(rangeEnd) }),
-		[openNewEvent],
+		(rangeStart: string, rangeEnd: string) => openRange(rangeStart, rangeEnd),
+		[openRange],
 	);
 
 	const handleDayOrAllDayClick = useCallback(
 		(dateStr: string) => {
-			const d = new Date(dateStr);
-			const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-			const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+			const start = parseScheduleDate(dateStr);
+			if (!start) return;
+			const end = new Date(start.getTime());
+			end.setDate(end.getDate() + 1);
 			openNewEvent({ start, end, allDay: true });
 		},
 		[openNewEvent],
@@ -194,15 +201,31 @@ export default function EditorSchedule({
 		},
 		[calendarData, handleDataChange],
 	);
+	const handleWizardSave = useCallback(
+		(event: CalendarEvent) => {
+			handleSaveEvent(event);
+			closeModal();
+		},
+		[closeModal, handleSaveEvent],
+	);
+	const handleWizardDelete = useCallback(
+		(uid: string) => {
+			handleDeleteEvent(uid);
+			closeModal();
+		},
+		[closeModal, handleDeleteEvent],
+	);
 
 	return (
 		<>
 			<Schedule
+				h="100%"
 				p="sm"
 				events={scheduleEvents}
 				defaultView="week"
 				radius={0}
 				layout="responsive"
+				withAgenda
 				mode={readOnly ? "static" : "default"}
 				{...(!readOnly && {
 					onEventClick: handleEventClick,
@@ -228,17 +251,9 @@ export default function EditorSchedule({
 					<EditorScheduleWizard
 						event={editingEvent}
 						isNew={isNewEvent}
-						onSave={(ev) => {
-							handleSaveEvent(ev);
-							closeModal();
-						}}
+						onSave={handleWizardSave}
 						onDelete={
-							!isNewEvent && editingEvent?.uid
-								? (uid) => {
-										handleDeleteEvent(uid);
-										closeModal();
-									}
-								: undefined
+							!isNewEvent && editingEvent?.uid ? handleWizardDelete : undefined
 						}
 					/>
 				</React.Suspense>

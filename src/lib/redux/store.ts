@@ -1,7 +1,10 @@
 import { combineSlices, configureStore } from "@reduxjs/toolkit";
 
 import { idbListener, storageListener } from "./listeners";
+import { draftsApi, readDraftMap } from "./queries/drafts";
+import { parseApi } from "./queries/parse";
 import { webFsApi } from "./queries/web-fs";
+import { readSession, webLlmApi } from "./queries/web-llm";
 import { interfaceSlice } from "./slices/interface";
 import { sessionSlice } from "./slices/session";
 
@@ -17,22 +20,43 @@ export const makeStore = () => {
 						"webFsApi/executeQuery/pending",
 						"webFsApi/executeMutation/fulfilled",
 						"webFsApi/executeMutation/pending",
+						"parseApi/executeQuery/fulfilled",
+						"parseApi/executeQuery/pending",
 					],
 					ignoredActionPaths: [
 						"payload.content",
 						"meta.arg.content",
 						"meta.baseQueryMeta",
 					],
-					ignoredPaths: ["webFsApi.queries", "webFsApi.mutations"],
+					ignoredPaths: [
+						"webFsApi.queries",
+						"webFsApi.mutations",
+						"parseApi.queries",
+					],
 				},
 			})
 				.concat(webFsApi.middleware)
+				.concat(parseApi.middleware)
+				.concat(webLlmApi.middleware)
+				.concat(draftsApi.middleware)
 				.prepend(storageListener.middleware)
 				.prepend(idbListener.middleware),
-		reducer: combineSlices(sessionSlice, interfaceSlice, webFsApi),
+		reducer: combineSlices(
+			sessionSlice,
+			interfaceSlice,
+			webFsApi,
+			parseApi,
+			webLlmApi,
+			draftsApi,
+		),
 	});
 
-	// setupListeners(store.dispatch)
+	store.dispatch(
+		draftsApi.util.upsertQueryData("getDrafts", undefined, readDraftMap()),
+	);
+	store.dispatch(
+		webLlmApi.util.upsertQueryData("getWebLlmChat", undefined, readSession()),
+	);
 
 	return store;
 };

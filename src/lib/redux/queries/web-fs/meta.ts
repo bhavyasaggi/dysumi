@@ -2,6 +2,7 @@ import {
 	type FileProcessorEntry,
 	getFileWorkerApi,
 } from "@/lib/file-worker-api";
+import { actionInterfaceUpdate } from "@/lib/redux/slices/interface";
 import { webFsApi } from "./index";
 
 export const webFsMetaApi = webFsApi.injectEndpoints({
@@ -96,6 +97,7 @@ export const webFsMetaApi = webFsApi.injectEndpoints({
 				"DIRECTORY_RECENT",
 				"DIRECTORY_STRUCTURE",
 				"FILE_METADATA",
+				"WORKSPACE_NAMES",
 			],
 			queryFn: async ({ path, mode, type }) => {
 				try {
@@ -127,6 +129,29 @@ export const webFsMetaApi = webFsApi.injectEndpoints({
 				}
 			},
 		}),
+		resumeWebFsWorkspace: builder.query<{ granted: boolean }, { path: string }>(
+			{
+				queryFn: async ({ path }) => {
+					try {
+						const worker = await getFileWorkerApi();
+						await worker.list(path);
+						return { data: { granted: true } };
+					} catch {
+						return { data: { granted: false } };
+					}
+				},
+				async onQueryStarted(_arg, api) {
+					try {
+						const { data } = await api.queryFulfilled;
+						if (!data.granted) {
+							api.dispatch(actionInterfaceUpdate({ workspacePath: undefined }));
+						}
+					} catch {
+						api.dispatch(actionInterfaceUpdate({ workspacePath: undefined }));
+					}
+				},
+			},
+		),
 		listWebFsDirectory: builder.query<FileProcessorEntry[], { path: string }>({
 			providesTags: (_result, _error, { path }) => [
 				{ type: "DIRECTORY_STRUCTURE", id: path },
@@ -135,6 +160,20 @@ export const webFsMetaApi = webFsApi.injectEndpoints({
 				try {
 					const worker = await getFileWorkerApi();
 					const data = await worker.list(path);
+					return { data };
+				} catch (error) {
+					return { error: { status: "FETCH_ERROR", error: String(error) } };
+				}
+			},
+		}),
+		listWebFsNames: builder.query<string[], { path: string }>({
+			providesTags: (_result, _error, { path }) => [
+				{ type: "WORKSPACE_NAMES", id: path },
+			],
+			queryFn: async ({ path }) => {
+				try {
+					const worker = await getFileWorkerApi();
+					const data = await worker.listNames(path);
 					return { data };
 				} catch (error) {
 					return { error: { status: "FETCH_ERROR", error: String(error) } };
@@ -164,5 +203,7 @@ export const {
 	useCloseWebFsHandleMutation,
 	useRefreshWebFsHandleMutation,
 	useListWebFsDirectoryQuery,
+	useListWebFsNamesQuery,
+	useResumeWebFsWorkspaceQuery,
 	useMetaWebFsEntryQuery,
 } = webFsMetaApi;

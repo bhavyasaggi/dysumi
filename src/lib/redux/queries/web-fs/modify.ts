@@ -8,6 +8,7 @@ export const webFsModifyApi = webFsApi.injectEndpoints({
 			{ path: string; options?: { force?: boolean } }
 		>({
 			invalidatesTags: (_result, _error, { path }) => [
+				"WORKSPACE_NAMES",
 				{
 					type: "DIRECTORY_STRUCTURE",
 					id: path.split("/").slice(0, -1).join("/"),
@@ -30,6 +31,7 @@ export const webFsModifyApi = webFsApi.injectEndpoints({
 			{ path: string; options?: { force?: boolean } }
 		>({
 			invalidatesTags: (_result, _error, { path }) => [
+				"WORKSPACE_NAMES",
 				{
 					type: "DIRECTORY_STRUCTURE",
 					id: path.split("/").slice(0, -1).join("/"),
@@ -48,6 +50,7 @@ export const webFsModifyApi = webFsApi.injectEndpoints({
 		}),
 		deleteWebFsEntry: builder.mutation<{ success: boolean }, { path: string }>({
 			invalidatesTags: (_result, _error, { path }) => [
+				"WORKSPACE_NAMES",
 				{
 					type: "DIRECTORY_STRUCTURE",
 					id: path.split("/").slice(0, -1).join("/"),
@@ -66,7 +69,7 @@ export const webFsModifyApi = webFsApi.injectEndpoints({
 			},
 		}),
 		copyWebFsEntry: builder.mutation<
-			{ success: boolean },
+			{ success: boolean; path?: string },
 			{
 				sourcePath: string;
 				targetPath: string;
@@ -75,6 +78,7 @@ export const webFsModifyApi = webFsApi.injectEndpoints({
 		>({
 			invalidatesTags: (_result, _error, { targetPath }) => {
 				return [
+					"WORKSPACE_NAMES" as const,
 					{
 						type: "DIRECTORY_STRUCTURE" as const,
 						id: targetPath.split("/").slice(0, -1).join("/"),
@@ -96,7 +100,7 @@ export const webFsModifyApi = webFsApi.injectEndpoints({
 			queryFn: async ({ sourcePath, targetPath, options }) => {
 				try {
 					if (sourcePath === targetPath) {
-						return { data: { success: true } };
+						return { data: { success: true, path: sourcePath } };
 					}
 					const worker = await getFileWorkerApi();
 					const data = await worker.copy(sourcePath, targetPath, options);
@@ -106,8 +110,36 @@ export const webFsModifyApi = webFsApi.injectEndpoints({
 				}
 			},
 		}),
-		moveWebFsEntry: builder.mutation<
+		renameWebFsEntry: builder.mutation<
 			{ success: boolean },
+			{ path: string; newName: string }
+		>({
+			invalidatesTags: (_result, _error, { path, newName }) => {
+				const parent = path.split("/").slice(0, -1).join("/");
+				const nextPath = [...path.split("/").slice(0, -1), newName].join("/");
+				return [
+					"WORKSPACE_NAMES" as const,
+					{ type: "DIRECTORY_STRUCTURE" as const, id: parent },
+					{ type: "DIRECTORY_STRUCTURE" as const, id: path },
+					{ type: "DIRECTORY_STRUCTURE" as const, id: nextPath },
+					{ type: "FILE_CONTENT" as const, id: path },
+					{ type: "FILE_CONTENT" as const, id: nextPath },
+					{ type: "FILE_METADATA" as const, id: path },
+					{ type: "FILE_METADATA" as const, id: nextPath },
+				];
+			},
+			queryFn: async ({ path, newName }) => {
+				try {
+					const worker = await getFileWorkerApi();
+					const data = await worker.rename(path, newName);
+					return { data };
+				} catch (error) {
+					return { error: { status: "FETCH_ERROR", error: String(error) } };
+				}
+			},
+		}),
+		moveWebFsEntry: builder.mutation<
+			{ success: boolean; path?: string },
 			{
 				sourcePath: string;
 				targetPath: string;
@@ -116,6 +148,7 @@ export const webFsModifyApi = webFsApi.injectEndpoints({
 		>({
 			invalidatesTags: (_result, _error, { sourcePath, targetPath }) => {
 				return [
+					"WORKSPACE_NAMES" as const,
 					{
 						type: "DIRECTORY_STRUCTURE" as const,
 						id: sourcePath.split("/").slice(0, -1).join("/"),
@@ -139,7 +172,7 @@ export const webFsModifyApi = webFsApi.injectEndpoints({
 			queryFn: async ({ sourcePath, targetPath, options }) => {
 				try {
 					if (sourcePath === targetPath) {
-						return { data: { success: true } };
+						return { data: { success: true, path: sourcePath } };
 					}
 					const worker = await getFileWorkerApi();
 					const data = await worker.copy(sourcePath, targetPath, options);
@@ -159,4 +192,5 @@ export const {
 	useDeleteWebFsEntryMutation,
 	useCopyWebFsEntryMutation,
 	useMoveWebFsEntryMutation,
+	useRenameWebFsEntryMutation,
 } = webFsModifyApi;

@@ -2,13 +2,25 @@ import { ActionIcon, Group, HoverCard, Kbd, Table, Text } from "@mantine/core";
 import React from "react";
 import Icon from "@/lib/ui/Icon";
 
-const SHORTCUTS = [
-	{ value: ["Ctrl", "N"], label: "New File" },
-	{ value: ["Ctrl", "O"], label: "Open Folder" },
-	{ value: ["Ctrl", "F"], label: "Search" },
-	{ value: ["Ctrl", "S"], label: "Save" },
-	{ value: ["Ctrl", "Shift", "S"], label: "Save As..." },
-];
+const showAbout = () => {
+	window.alert("dysumi: Notes everywhere.\nVersion: 0.0.0-alpha");
+};
+
+function commandKey() {
+	if (typeof navigator === "undefined") return "Ctrl";
+	return /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
+}
+
+function shortcutRows() {
+	const modifier = commandKey();
+	return [
+		{ value: [modifier, "N"], label: "New File" },
+		{ value: [modifier, "O"], label: "Open Folder" },
+		{ value: [modifier, "F"], label: "Search" },
+		{ value: [modifier, "S"], label: "Save" },
+		{ value: [modifier, "Shift", "S"], label: "Save As…" },
+	];
+}
 
 export default function InterfaceShellStatusActionHelp() {
 	return (
@@ -19,9 +31,8 @@ export default function InterfaceShellStatusActionHelp() {
 					color="gray"
 					w={46}
 					flex="0 0 auto"
-					onClick={() => {
-						window.alert("dysumi: Notes everywhere.\nVersion: 0.0.0-alpha");
-					}}
+					onClick={showAbout}
+					aria-label="Help"
 				>
 					<Icon title="Icon Help" icon="help-circle" height={16} width={16} />
 				</ActionIcon>
@@ -35,7 +46,7 @@ export default function InterfaceShellStatusActionHelp() {
 						withRowBorders={false}
 					>
 						<Table.Tbody>
-							{SHORTCUTS.map((item) => (
+							{shortcutRows().map((item) => (
 								<Table.Tr key={item.label}>
 									<Table.Th ta="right">
 										<Text span size="xs" c="gray" fw="bold">

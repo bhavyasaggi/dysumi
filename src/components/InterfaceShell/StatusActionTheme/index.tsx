@@ -14,7 +14,12 @@ export default function InterfaceShellStatusActionTheme() {
 		setColorScheme(computedColorScheme === "dark" ? "light" : "dark");
 	};
 	return (
-		<ActionIcon variant="subtle" color="gray" onClick={toggleColorScheme}>
+		<ActionIcon
+			variant="subtle"
+			color="gray"
+			onClick={toggleColorScheme}
+			aria-label={`Switch to ${computedColorScheme === "dark" ? "light" : "dark"} theme`}
+		>
 			<Icon
 				title={`Toggle theme (${computedColorScheme})`}
 				icon={computedColorScheme === "dark" ? "sun" : "moon"}

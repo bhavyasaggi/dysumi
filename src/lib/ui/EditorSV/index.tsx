@@ -204,7 +204,13 @@ export default function EditorSV({
 				overlayProps={{ blur: 2 }}
 				loaderProps={
 					status.status === "error"
-						? { children: <Text c="red">{status.message}</Text> }
+						? {
+								children: (
+									<Text c="red" role="alert">
+										{status.message}
+									</Text>
+								),
+							}
 						: { type: "dots", color: "gray", size: "xl" }
 				}
 			/>

@@ -131,9 +131,13 @@ export default function EditorScheduleWizard({
 	};
 
 	const handleDelete = () => {
-		if (formData.uid && onDelete) {
-			onDelete(formData.uid);
-		}
+		if (!(formData.uid && onDelete)) return;
+		const label = formData.summary?.trim() || "this event";
+		const confirmed = window.confirm(
+			`Delete ${label}? This removes it from the file.`,
+		);
+		if (!confirmed) return;
+		onDelete(formData.uid);
 	};
 
 	// ── Shared step props ───────────────────────────────────────────────────
@@ -200,7 +204,7 @@ export default function EditorScheduleWizard({
 						title="Error"
 						stroke="var(--mantine-color-red-6)"
 					/>
-					<Text size="sm" c="red">
+					<Text size="sm" c="red" role="alert">
 						{currentStepError}
 					</Text>
 				</Group>

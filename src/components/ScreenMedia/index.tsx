@@ -46,8 +46,9 @@ function getMimeType(path: string): string {
 	return MEDIA_MIME_TYPES[ext] || "application/octet-stream";
 }
 
-function getMediaType(path: string): "audio" | "video" {
+function getMediaType(path: string): "audio" | "video" | "midi" {
 	const ext = path.split(".").pop()?.toLowerCase() || "";
+	if (ext === "midi" || ext === "mid") return "midi";
 	return AUDIO_EXTS.has(ext) ? "audio" : "video";
 }
 
@@ -98,6 +99,8 @@ export default function ScreenMedia() {
 			});
 			localUrl = URL.createObjectURL(blob);
 			setMediaUrl(localUrl);
+		} else {
+			setMediaUrl(null);
 		}
 
 		return () => {
@@ -109,7 +112,7 @@ export default function ScreenMedia() {
 
 	if (processing) {
 		return (
-			<Center py="xl" px="sm" h="100%">
+			<Center py="xl" px="sm" h="100%" role="status" aria-label="Loading…">
 				<Loader size="xl" type="dots" color="gray" />
 			</Center>
 		);
@@ -119,9 +122,21 @@ export default function ScreenMedia() {
 		return (
 			<Center py="xl" px="sm" h="100%">
 				<Stack align="center" gap="sm">
-					<Text c="red">Error: {error}</Text>
+					<Text c="red" role="alert">
+						Error: {error}
+					</Text>
 				</Stack>
 			</Center>
+		);
+	}
+
+	if (mediaType === "midi" && webFsFileContent?.length) {
+		return (
+			<ViewerMedia
+				key={activeFile?.path}
+				bytes={webFsFileContent}
+				type="midi"
+			/>
 		);
 	}
 

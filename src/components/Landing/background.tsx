@@ -114,17 +114,20 @@ export default function LandingBackground({
 		const canvas = canvasRef.current;
 		if (!canvas) return;
 
+		let frameId = 0;
 		const resizeCanvas = () => {
 			canvas.width = canvas.clientWidth;
 			canvas.height = canvas.clientHeight;
 		};
 		resizeCanvas();
 		window.addEventListener("resize", resizeCanvas);
+		const stop = () => {
+			cancelAnimationFrame(frameId);
+			window.removeEventListener("resize", resizeCanvas);
+		};
 
 		const gl = canvas.getContext("webgl");
-		if (!gl) {
-			return;
-		}
+		if (!gl) return stop;
 
 		const compileShader = (
 			source: string,
@@ -146,16 +149,14 @@ export default function LandingBackground({
 			fragmentShaderSource,
 			gl.FRAGMENT_SHADER,
 		);
-		if (!(vertexShader && fragmentShader)) return;
+		if (!(vertexShader && fragmentShader)) return stop;
 
 		const program = gl.createProgram();
-		if (!program) return;
+		if (!program) return stop;
 		gl.attachShader(program, vertexShader);
 		gl.attachShader(program, fragmentShader);
 		gl.linkProgram(program);
-		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-			return;
-		}
+		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return stop;
 		// biome-ignore lint/correctness/useHookAtTopLevel: Not a React Hook
 		gl.useProgram(program);
 
@@ -179,7 +180,9 @@ export default function LandingBackground({
 		const uSizeLocation = gl.getUniformLocation(program, "uSize");
 
 		const startTime = performance.now();
-		let frameId = 0;
+		const reduceMotion = window.matchMedia(
+			"(prefers-reduced-motion: reduce)",
+		).matches;
 		const render = () => {
 			resizeCanvas();
 			gl.viewport(0, 0, canvas.width, canvas.height);
@@ -188,19 +191,16 @@ export default function LandingBackground({
 			gl.uniform1f(iTimeLocation, (currentTime - startTime) / 1000.0);
 			gl.uniform1f(uHueLocation, hue);
 			gl.uniform1f(uXOffsetLocation, xOffset);
-			gl.uniform1f(uSpeedLocation, speed);
+			gl.uniform1f(uSpeedLocation, reduceMotion ? 0 : speed);
 			gl.uniform1f(uIntensityLocation, intensity);
 			gl.uniform1f(uSizeLocation, size);
 			gl.drawArrays(gl.TRIANGLES, 0, 6);
-			frameId = requestAnimationFrame(render);
+			if (!reduceMotion) frameId = requestAnimationFrame(render);
 		};
 		frameId = requestAnimationFrame(render);
 
-		return () => {
-			cancelAnimationFrame(frameId);
-			window.removeEventListener("resize", resizeCanvas);
-		};
+		return stop;
 	}, [hue, xOffset, speed, intensity, size]);
 
-	return <canvas ref={canvasRef} className={className} style={style} />;
+	return <canvas ref={canvasRef} className={className} style={style} inert />;
 }

@@ -99,19 +99,25 @@ export default function EditorImage({
 
 	// Dynamically import the editor component
 	useEffect(() => {
+		let cancelled = false;
 		ensureReactGlobal();
 
 		import("react-filerobot-image-editor")
 			.then((module) => {
+				if (cancelled) return;
 				setEditorComponent({
 					Editor: module.default,
 					TABS: module.TABS,
 					TOOLS: module.TOOLS,
 				});
 			})
-			.catch((_err) => {
+			.catch(() => {
+				if (cancelled) return;
 				setError("Failed to load image editor");
 			});
+		return () => {
+			cancelled = true;
+		};
 	}, []);
 
 	// Handle before save - intercept and save directly without modal
@@ -185,21 +191,34 @@ export default function EditorImage({
 			return;
 		}
 
+		let cancelled = false;
 		const img = new Image();
+		const clear = () => {
+			img.onload = null;
+			img.onerror = null;
+		};
 		img.onload = () => {
+			clear();
+			if (cancelled) return;
 			setIsLoading(false);
 			setError(null);
 		};
 		img.onerror = () => {
+			clear();
+			if (cancelled) return;
 			setIsLoading(false);
 			setError("Failed to load image");
 		};
 		img.src = src;
+		return () => {
+			cancelled = true;
+			clear();
+		};
 	}, [src]);
 
 	if (isLoading || !EditorComponent) {
 		return (
-			<Center h="100%" w="100%">
+			<Center h="100%" w="100%" role="status" aria-label="Loading…">
 				<Loader size="xl" type="dots" color="gray" />
 			</Center>
 		);
@@ -208,7 +227,7 @@ export default function EditorImage({
 	if (error || !src) {
 		return (
 			<Center h="100%" w="100%">
-				<Text c="dimmed">{error || "No image to display"}</Text>
+				<Text c="dimmed">{error ? error : "No image to display"}</Text>
 			</Center>
 		);
 	}

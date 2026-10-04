@@ -1,0 +1,4 @@
+/* SITE */
+dysumi — local-first file workspace
+Language: English
+License: GNU Affero General Public License v3.0

@@ -1,4 +1,5 @@
 import type { HttpFile, HttpRequest } from "./types.d";
+import { applyVariables } from "./variables";
 
 const REQUEST_LINE_RE =
 	/^\s*(?<method>GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|CONNECT|TRACE|PROPFIND|PROPPATCH|MKCOL|COPY|MOVE|LOCK|UNLOCK|CHECKOUT|CHECKIN|REPORT|MERGE|MKACTIVITY|MKWORKSPACE|VERSION-CONTROL|BASELINE-CONTROL|MKCALENDAR|ACL|SEARCH|GRAPHQL)\s+(?<url>.+?)$/iu;
@@ -37,11 +38,7 @@ function matchRequestLine(
 
 /** Replace `{{var}}` placeholders in a URL with their values. */
 function resolveVariables(url: string, vars: Record<string, string>): string {
-	let resolved = url;
-	for (const [k, v] of Object.entries(vars)) {
-		resolved = resolved.replaceAll(`{{${k}}}`, v);
-	}
-	return resolved;
+	return applyVariables(url, vars);
 }
 
 /** Try to match a metadata directive (# @key value). Returns { key, value } or null. */
@@ -220,6 +217,7 @@ export function parseHttpFile(source: string): HttpFile {
 	for (const region of regions) {
 		const varsBefore = { ...allVars };
 		const parsed = parseRegion(region.content, region.title, allVars);
+		if (parsed) parsed.variableScope = { ...allVars };
 
 		if (region.isGlobal) {
 			collectNewVars(allVars, varsBefore, globalVars);

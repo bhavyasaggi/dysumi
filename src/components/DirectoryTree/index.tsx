@@ -97,7 +97,7 @@ const DirectoryTree = React.memo(function DirectoryTreeRaw(
 
 	if (isError) {
 		return (
-			<Text size="xs" c="red">
+			<Text size="xs" c="red" role="alert">
 				<code>{JSON.stringify(error)}</code>
 			</Text>
 		);
@@ -118,7 +118,7 @@ const DirectoryTree = React.memo(function DirectoryTreeRaw(
 				disabled={props.disabled ?? processing}
 				level={props.level ?? 1}
 				error={isError ? JSON.stringify(error) : undefined}
-				name={processing ? "processing..." : (props.name ?? data?.name)}
+				name={processing ? "Loading…" : (props.name ?? data?.name)}
 			/>
 			{processing || data?.isFile || !opened ? null : (
 				<DirectoryTreeBody

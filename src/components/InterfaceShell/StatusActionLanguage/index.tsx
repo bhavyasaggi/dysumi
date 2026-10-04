@@ -1,4 +1,5 @@
 import { Select } from "@mantine/core";
+import { useCallback } from "react";
 import { useReduxDispatch, useReduxSelector } from "@/lib/redux/hooks";
 import {
 	actionInterfaceOpenFile,
@@ -11,10 +12,12 @@ const LANGUAGE_DATA = [
 	"bat",
 	"cpp",
 	"css",
+	"hledger-rules",
 	"html",
 	"ini",
 	"java",
 	"javascript",
+	"ledger",
 	"markdown",
 	"php",
 	"plaintext",
@@ -34,6 +37,22 @@ export default function InterfaceShellStatusActionLanguage() {
 		activeFile?.language || extToLanguage(activeFile?.path || "");
 
 	const activeFileMode = activeFile?.mode || "normal";
+
+	const onLanguageChange = useCallback(
+		(value: string | null) => {
+			if (activeFile) {
+				dispatch(
+					actionInterfaceOpenFile({
+						...activeFile,
+						language:
+							!value || value === activeFileLanguage ? undefined : value,
+					}),
+				);
+			}
+		},
+		[activeFile, activeFileLanguage, dispatch],
+	);
+
 	if (
 		activeFileMode !== "normal" ||
 		["md", "csv", "json", "yaml", "yml"].includes(
@@ -49,6 +68,7 @@ export default function InterfaceShellStatusActionLanguage() {
 
 	return (
 		<Select
+			aria-label="Editor language"
 			size="xs"
 			variant="unstyled"
 			searchable={true}
@@ -65,16 +85,7 @@ export default function InterfaceShellStatusActionLanguage() {
 			}}
 			checkIconPosition="right"
 			value={activeFileLanguage}
-			onChange={(v) => {
-				if (activeFile) {
-					dispatch(
-						actionInterfaceOpenFile({
-							...activeFile,
-							language: v === activeFileLanguage ? undefined : v || undefined,
-						}),
-					);
-				}
-			}}
+			onChange={onLanguageChange}
 			data={LANGUAGE_DATA}
 			leftSection={<Icon icon="code" height={16} width={16} title="Language" />}
 			w={140}

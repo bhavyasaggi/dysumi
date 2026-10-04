@@ -1,3 +1,5 @@
+import type * as GeoJSON from "geojson";
+
 export interface StyleInfo {
 	lineColor: string;
 	lineOpacity: number;
@@ -11,7 +13,7 @@ export const DEFAULT_COLOR = "#3388ff";
 
 // KML encodes colors as aabbggrr (alpha, blue, green, red)
 function kmlColor(kmlHex: string | null | undefined): string {
-	if (!kmlHex || kmlHex.length !== 8) return DEFAULT_COLOR;
+	if (kmlHex?.length !== 8) return DEFAULT_COLOR;
 	const r = kmlHex.slice(6, 8);
 	const g = kmlHex.slice(4, 6);
 	const b = kmlHex.slice(2, 4);
@@ -19,7 +21,7 @@ function kmlColor(kmlHex: string | null | undefined): string {
 }
 
 function kmlOpacity(kmlHex: string | null | undefined): number {
-	if (!kmlHex || kmlHex.length !== 8) return 1;
+	if (kmlHex?.length !== 8) return 1;
 	return Number.parseInt(kmlHex.slice(0, 2), 16) / 255;
 }
 
@@ -217,12 +219,19 @@ export interface KMLFolder {
 	children: KMLFolder[];
 }
 
+export interface GeoDocument {
+	geojson: GeoJSON.FeatureCollection;
+	styleMap: Map<string, StyleInfo>;
+	folders: KMLFolder[];
+	rootFeatureIndices: number[];
+}
+
 function parsePlacemarksFromElement(
 	container: Element,
 	styleMap: Map<string, StyleInfo>,
-	features: GeoJSON.Feature[],
-	counter: { value: number },
+	target: { features: GeoJSON.Feature[]; counter: { value: number } },
 ): number[] {
+	const { features, counter } = target;
 	const indices: number[] = [];
 	for (const child of Array.from(container.children)) {
 		if (child.tagName !== "Placemark") continue;
@@ -244,31 +253,24 @@ function parsePlacemarksFromElement(
 function parseFolderTree(
 	container: Element,
 	styleMap: Map<string, StyleInfo>,
-	features: GeoJSON.Feature[],
-	counter: { value: number },
+	target: { features: GeoJSON.Feature[]; counter: { value: number } },
 ): KMLFolder[] {
+	const { features, counter } = target;
 	const folders: KMLFolder[] = [];
 	for (const child of Array.from(container.children)) {
 		if (child.tagName !== "Folder") continue;
 		const name = getDirectChildText(child, "name") ?? "Folder";
-		const featureIndices = parsePlacemarksFromElement(
-			child,
-			styleMap,
+		const featureIndices = parsePlacemarksFromElement(child, styleMap, {
 			features,
 			counter,
-		);
-		const children = parseFolderTree(child, styleMap, features, counter);
+		});
+		const children = parseFolderTree(child, styleMap, { features, counter });
 		folders.push({ name, featureIndices, children });
 	}
 	return folders;
 }
 
-export function kmlToGeoJSON(kmlString: string): {
-	geojson: GeoJSON.FeatureCollection;
-	styleMap: Map<string, StyleInfo>;
-	folders: KMLFolder[];
-	rootFeatureIndices: number[];
-} {
+export function kmlToGeoJSON(kmlString: string): GeoDocument {
 	const parser = new DOMParser();
 	const doc = parser.parseFromString(kmlString, "application/xml");
 	const styleMap = parseStyles(doc);
@@ -279,15 +281,13 @@ export function kmlToGeoJSON(kmlString: string): {
 	const root = doc.getElementsByTagName("Document")[0] ?? doc.documentElement;
 
 	// Parse top-level placemarks (not inside any Folder)
-	const rootFeatureIndices = parsePlacemarksFromElement(
-		root,
-		styleMap,
+	const rootFeatureIndices = parsePlacemarksFromElement(root, styleMap, {
 		features,
 		counter,
-	);
+	});
 
 	// Parse folder hierarchy recursively
-	const folders = parseFolderTree(root, styleMap, features, counter);
+	const folders = parseFolderTree(root, styleMap, { features, counter });
 
 	return {
 		geojson: { type: "FeatureCollection", features },

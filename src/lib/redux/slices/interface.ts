@@ -9,6 +9,33 @@ interface OpenFile {
 	language?: string;
 }
 
+type ClipboardEntry = {
+	path: string;
+	name: string;
+	isDirectory: boolean;
+};
+
+type DirectoryClipboard = {
+	mode: "copy" | "cut";
+	entries: ClipboardEntry[];
+};
+
+export type DirectorySelectionEntry = {
+	path: string;
+	name: string;
+	isDirectory: boolean;
+};
+
+type AppNotification = {
+	id: string;
+	key?: string;
+	title: string;
+	detail?: string;
+	tone: "success" | "error" | "info";
+	at: number;
+	read: boolean;
+};
+
 type InitialStateType = {
 	isReady: boolean;
 	viewPanel?: "welcome" | "explorer" | "search" | "web-llm" | string;
@@ -16,9 +43,33 @@ type InitialStateType = {
 	openFiles: OpenFile[];
 	activeFile?: string;
 	workspacePath?: string;
+	directoryClipboard: DirectoryClipboard | null;
+	directorySelection: DirectorySelectionEntry[];
+	notifications: AppNotification[];
 };
 
 const LOCALSTORAGE_KEY = "__slice_interface";
+
+function storedOpenFiles(value: unknown) {
+	if (!Array.isArray(value)) return undefined;
+	const files: OpenFile[] = [];
+	for (const item of value) {
+		if (!item || typeof item !== "object") continue;
+		const record = item as Record<string, unknown>;
+		if (typeof record.name !== "string" || typeof record.path !== "string") {
+			continue;
+		}
+		if (!(record.name && record.path)) continue;
+		const file: OpenFile = { name: record.name, path: record.path };
+		if (record.mode === "hex" || record.mode === "normal")
+			file.mode = record.mode;
+		if (typeof record.language === "string" && record.language) {
+			file.language = record.language;
+		}
+		files.push(file);
+	}
+	return files.length > 0 ? files : undefined;
+}
 
 const initialStateResolver = (): InitialStateType => {
 	let storageValue: Record<string, unknown> | undefined;
@@ -29,13 +80,35 @@ const initialStateResolver = (): InitialStateType => {
 	} catch {
 		// Gulp
 	}
-	const { viewPanel, viewNotificationMuted } = storageValue ?? {};
+	const viewPanel = storageValue?.viewPanel;
+	const viewNotificationMuted = storageValue?.viewNotificationMuted;
+	const openFiles = storedOpenFiles(storageValue?.openFiles) ?? [
+		{ name: "Untitled", path: "untitled:__init.md" },
+	];
+	const activeRaw = storageValue?.activeFile;
+	const activeFile =
+		typeof activeRaw === "string" &&
+		openFiles.some((file) => file.path === activeRaw)
+			? activeRaw
+			: openFiles.at(-1)?.path;
+	const workspacePath =
+		typeof storageValue?.workspacePath === "string" &&
+		storageValue.workspacePath
+			? storageValue.workspacePath
+			: undefined;
 	return {
 		isReady: Boolean(globalThis.localStorage),
-		viewPanel: (viewPanel as string) ?? "welcome",
-		viewNotificationMuted: (viewNotificationMuted as boolean) ?? false,
-		openFiles: [{ name: "Untitled", path: "untitled:__init.md" }],
-		activeFile: "untitled:__init.md",
+		viewPanel: typeof viewPanel === "string" ? viewPanel : "welcome",
+		viewNotificationMuted:
+			typeof viewNotificationMuted === "boolean"
+				? viewNotificationMuted
+				: false,
+		openFiles,
+		activeFile,
+		...(workspacePath ? { workspacePath } : {}),
+		directoryClipboard: null,
+		directorySelection: [],
+		notifications: [],
 	};
 };
 
@@ -80,6 +153,61 @@ export const interfaceSlice = createSlice({
 			const [moved] = state.openFiles.splice(from, 1);
 			state.openFiles.splice(to, 0, moved);
 		},
+		setDirectoryClipboard(
+			state,
+			action: PayloadAction<DirectoryClipboard | null>,
+		) {
+			state.directoryClipboard = action.payload;
+		},
+		setDirectorySelection(
+			state,
+			action: PayloadAction<DirectorySelectionEntry[]>,
+		) {
+			state.directorySelection = action.payload;
+		},
+		pushNotification(
+			state,
+			action: PayloadAction<{
+				title: string;
+				detail?: string;
+				tone: AppNotification["tone"];
+				key?: string;
+			}>,
+		) {
+			if (state.viewNotificationMuted && action.payload.tone !== "error")
+				return;
+			const current = action.payload.key
+				? state.notifications.find((item) => item.key === action.payload.key)
+				: undefined;
+			if (current) {
+				current.title = action.payload.title;
+				current.detail = action.payload.detail;
+				current.tone = action.payload.tone;
+				current.at = Date.now();
+				return;
+			}
+			state.notifications.unshift({
+				id: `${Date.now()}-${state.notifications.length}`,
+				at: Date.now(),
+				read: false,
+				title: action.payload.title,
+				detail: action.payload.detail,
+				tone: action.payload.tone,
+				key: action.payload.key,
+			});
+			if (state.notifications.length > 30) state.notifications.pop();
+		},
+		dismissNotification(state, action: PayloadAction<string>) {
+			state.notifications = state.notifications.filter(
+				(item) => item.id !== action.payload,
+			);
+		},
+		markNotificationsRead(state) {
+			for (const item of state.notifications) item.read = true;
+		},
+		clearNotifications(state) {
+			state.notifications = [];
+		},
 	},
 	selectors: {
 		getIsReady: (state) => state.isReady,
@@ -90,6 +218,9 @@ export const interfaceSlice = createSlice({
 			return state.openFiles.find((f) => f.path === state.activeFile);
 		},
 		getWorkspacePath: (state) => state.workspacePath,
+		getDirectoryClipboard: (state) => state.directoryClipboard,
+		getDirectorySelection: (state) => state.directorySelection,
+		getNotifications: (state) => state.notifications,
 	},
 });
 
@@ -98,6 +229,12 @@ export const {
 	openFile: actionInterfaceOpenFile,
 	closeFile: actionInterfaceCloseFile,
 	reorderFiles: actionInterfaceReorderFiles,
+	setDirectoryClipboard: actionInterfaceSetDirectoryClipboard,
+	setDirectorySelection: actionInterfaceSetDirectorySelection,
+	pushNotification: actionInterfacePushNotification,
+	dismissNotification: actionInterfaceDismissNotification,
+	markNotificationsRead: actionInterfaceMarkNotificationsRead,
+	clearNotifications: actionInterfaceClearNotifications,
 } = interfaceSlice.actions;
 
 export const {
@@ -107,6 +244,9 @@ export const {
 	getOpenFiles: selectorInterfaceGetOpenFiles,
 	getActiveFile: selectorInterfaceGetActiveFile,
 	getWorkspacePath: selectorInterfaceGetWorkspacePath,
+	getDirectoryClipboard: selectorInterfaceGetDirectoryClipboard,
+	getDirectorySelection: selectorInterfaceGetDirectorySelection,
+	getNotifications: selectorInterfaceGetNotifications,
 } = interfaceSlice.selectors;
 
 export default interfaceSlice.reducer;
@@ -118,19 +258,23 @@ storageListener.startListening({
 		const hasWindow = Boolean(globalThis.window);
 		const localStorage = hasWindow ? globalThis.localStorage : undefined;
 		if (localStorage) {
-			const serialStateInterface: Partial<InitialStateType> = {
-				...state.interface,
-				// client-only values
-				isReady: undefined,
-				openFiles: undefined,
-				activeFile: undefined,
-				workspacePath: undefined,
-			};
+			const current = state.interface;
 			localStorage.setItem(
 				LOCALSTORAGE_KEY,
-				JSON.stringify(serialStateInterface),
+				JSON.stringify({
+					viewPanel: current.viewPanel,
+					viewNotificationMuted: current.viewNotificationMuted,
+					openFiles: current.openFiles,
+					activeFile: current.activeFile,
+					workspacePath: current.workspacePath,
+				}),
 			);
 		}
 	},
-	matcher: isAnyOf(actionInterfaceUpdate),
+	matcher: isAnyOf(
+		actionInterfaceUpdate,
+		actionInterfaceOpenFile,
+		actionInterfaceCloseFile,
+		actionInterfaceReorderFiles,
+	),
 });

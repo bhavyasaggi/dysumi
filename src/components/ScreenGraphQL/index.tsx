@@ -30,7 +30,7 @@ export default function ScreenGraphQL() {
 
 	if (processing) {
 		return (
-			<Center py="xl" px="sm" h="100%">
+			<Center py="xl" px="sm" h="100%" role="status" aria-label="Loading…">
 				<Loader size="xl" type="dots" color="gray" />
 			</Center>
 		);
@@ -40,7 +40,9 @@ export default function ScreenGraphQL() {
 		return (
 			<Center py="xl" px="sm" h="100%">
 				<Stack align="center" gap="sm">
-					<Text c="red">Error: {error}</Text>
+					<Text c="red" role="alert">
+						Error: {error}
+					</Text>
 				</Stack>
 			</Center>
 		);

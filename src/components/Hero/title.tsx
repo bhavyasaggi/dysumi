@@ -10,6 +10,7 @@ export interface HeroTitleProps {
 	color?: string;
 	className?: string;
 	style?: React.CSSProperties;
+	paused?: boolean;
 }
 
 export default function HeroTitle({
@@ -20,6 +21,7 @@ export default function HeroTitle({
 	color = "#fff",
 	className,
 	style,
+	paused = false,
 }: HeroTitleProps) {
 	const canvasRef = useRef<
 		HTMLCanvasElement & { cleanupFuzzyText?: () => void }
@@ -98,20 +100,22 @@ export default function HeroTitle({
 			ctx.translate(horizontalMargin, verticalMargin);
 
 			const fuzzRange = 30;
+			const reduceMotion = window.matchMedia(
+				"(prefers-reduced-motion: reduce)",
+			).matches;
+			const still = reduceMotion || paused;
 
-			const run = () => {
-				if (isCancelled) {
-					return;
-				}
+			const draw = (animate: boolean) => {
 				ctx.clearRect(
 					-fuzzRange,
 					-fuzzRange,
 					offscreenWidth + 2 * fuzzRange,
 					tightHeight + 2 * fuzzRange,
 				);
-
 				for (let j = 0; j < tightHeight; j++) {
-					const dx = Math.floor(INTENSITY * (Math.random() - 0.5) * fuzzRange);
+					const dx = animate
+						? Math.floor(INTENSITY * (Math.random() - 0.5) * fuzzRange)
+						: 0;
 					ctx.drawImage(
 						offscreen,
 						0,
@@ -124,12 +128,27 @@ export default function HeroTitle({
 						1,
 					);
 				}
-				animationFrameId = window.requestAnimationFrame(run);
 			};
 
+			if (still) {
+				draw(false);
+				return;
+			}
+
+			const run = () => {
+				if (isCancelled || document.hidden) return;
+				draw(true);
+				animationFrameId = window.requestAnimationFrame(run);
+			};
+			const onVisibility = () => {
+				window.cancelAnimationFrame(animationFrameId);
+				if (!document.hidden) run();
+			};
+			document.addEventListener("visibilitychange", onVisibility);
 			run();
 
 			canvas.cleanupFuzzyText = () => {
+				document.removeEventListener("visibilitychange", onVisibility);
 				window.cancelAnimationFrame(animationFrameId);
 			};
 		};
@@ -141,7 +160,7 @@ export default function HeroTitle({
 			window.cancelAnimationFrame(animationFrameId);
 			canvas?.cleanupFuzzyText?.();
 		};
-	}, [children, fontSize, fontWeight, fontFamily, color]);
+	}, [children, fontSize, fontWeight, fontFamily, color, paused]);
 
-	return <canvas ref={canvasRef} className={className} style={style} />;
+	return <canvas ref={canvasRef} className={className} style={style} inert />;
 }

@@ -1,14 +1,29 @@
-import "leaflet/dist/leaflet.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 
-import { Box, type TreeNodeData } from "@mantine/core";
-import L from "leaflet";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
+import { Box, Text, type TreeNodeData } from "@mantine/core";
+import type * as GeoJSON from "geojson";
 import {
-	collectCoords,
+	LngLatBounds,
+	Map as MapLibre,
+	type Map as MapLibreMap,
+	type MapMouseEvent,
+	Marker,
+	NavigationControl,
+	Popup,
+	type StyleSpecification,
+	setWorkerUrl,
+} from "maplibre-gl";
+import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+
+// The library looks for its worker beside the bundled chunk. Point it at the
+// worker file Vite copies out.
+setWorkerUrl(maplibreWorkerUrl);
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
 	DEFAULT_COLOR,
+	type GeoDocument,
 	type KMLFolder,
-	kmlToGeoJSON,
 	resolveStyle,
 	type StyleInfo,
 } from "@/lib/utils/kml";
@@ -17,222 +32,397 @@ import ViewerKMLLegend from "./Legend";
 
 import styles from "./styles.module.scss";
 
-interface ViewerKMLProps {
-	kmlString: string;
+const OSM_STYLE: StyleSpecification = {
+	version: 8,
+	sources: {
+		osm: {
+			type: "raster",
+			tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+			tileSize: 256,
+			maxzoom: 19,
+			attribution: "&copy; OpenStreetMap contributors",
+		},
+	},
+	layers: [{ id: "osm", type: "raster", source: "osm" }],
+};
+
+const LINE_TYPES = ["LineString", "MultiLineString", "Polygon", "MultiPolygon"];
+
+const FEATURE_PREFIX = "feature:";
+const FOLDER_PREFIX = "folder:";
+const BLOCKED_TAGS = "script, iframe, object, embed, link";
+
+function extendBounds(bounds: LngLatBounds, geometry: GeoJSON.Geometry): void {
+	switch (geometry.type) {
+		case "Point":
+			bounds.extend([geometry.coordinates[0], geometry.coordinates[1]]);
+			break;
+		case "MultiPoint":
+		case "LineString":
+			for (const position of geometry.coordinates) {
+				bounds.extend([position[0], position[1]]);
+			}
+			break;
+		case "MultiLineString":
+		case "Polygon":
+			for (const ring of geometry.coordinates) {
+				for (const position of ring) bounds.extend([position[0], position[1]]);
+			}
+			break;
+		case "MultiPolygon":
+			for (const polygon of geometry.coordinates) {
+				for (const ring of polygon) {
+					for (const position of ring) {
+						bounds.extend([position[0], position[1]]);
+					}
+				}
+			}
+			break;
+		case "GeometryCollection":
+			for (const child of geometry.geometries) extendBounds(bounds, child);
+			break;
+	}
 }
 
-function featureBounds(feature: GeoJSON.Feature): L.LatLngBounds | null {
-	if (!feature.geometry) return null;
-	const coords: [number, number][] = [];
-	collectCoords(feature.geometry, coords);
-	if (coords.length === 0) return null;
-	if (coords.length === 1) {
-		return L.latLng(coords[0][0], coords[0][1]).toBounds(1000);
-	}
-	return L.latLngBounds(coords);
+function boundsOf(
+	geometry: GeoJSON.Geometry | null | undefined,
+): LngLatBounds | null {
+	if (!geometry) return null;
+	const bounds = new LngLatBounds();
+	extendBounds(bounds, geometry);
+	return bounds.isEmpty() ? null : bounds;
 }
 
-function computeBounds(
-	fc: GeoJSON.FeatureCollection,
-): L.LatLngBoundsExpression | null {
-	const coords: [number, number][] = [];
-	for (const feature of fc.features) {
-		if (feature.geometry) collectCoords(feature.geometry, coords);
+function collectionBounds(features: GeoJSON.Feature[]): LngLatBounds | null {
+	const bounds = new LngLatBounds();
+	for (const feature of features) {
+		if (feature.geometry) extendBounds(bounds, feature.geometry);
 	}
-	if (coords.length === 0) return null;
-	if (coords.length === 1) {
-		return L.latLng(coords[0][0], coords[0][1]).toBounds(1000);
-	}
-	return L.latLngBounds(coords);
+	return bounds.isEmpty() ? null : bounds;
 }
 
 function featureColor(
 	feature: GeoJSON.Feature,
 	styleMap: Map<string, StyleInfo>,
 ): string {
-	const s = resolveStyle(feature, styleMap);
-	if (feature.geometry?.type === "Point") return s?.polyColor ?? DEFAULT_COLOR;
-	return s?.lineColor ?? DEFAULT_COLOR;
+	const style = resolveStyle(feature, styleMap);
+	if (feature.geometry?.type === "Point") {
+		return style?.polyColor ?? DEFAULT_COLOR;
+	}
+	return style?.lineColor ?? DEFAULT_COLOR;
 }
 
-const FEATURE_PREFIX = "feature:";
-const FOLDER_PREFIX = "folder:";
+function paintFeatures(
+	features: GeoJSON.Feature[],
+	styleMap: Map<string, StyleInfo>,
+): GeoJSON.FeatureCollection {
+	return {
+		type: "FeatureCollection",
+		features: features.map((feature) => {
+			const style = resolveStyle(feature, styleMap);
+			const point = feature.geometry?.type === "Point";
+			const properties: GeoJSON.GeoJsonProperties = {
+				...(feature.properties ?? {}),
+				lineColor: style?.lineColor ?? DEFAULT_COLOR,
+				lineOpacity: style?.lineOpacity ?? 1,
+				lineWidth: style?.lineWidth ?? 2,
+				polyColor: style?.polyColor ?? DEFAULT_COLOR,
+				polyOpacity: point
+					? (style?.polyOpacity ?? 0.8)
+					: (style?.polyOpacity ?? 0.3),
+			};
+			if (style?.iconUrl && point) properties.iconUrl = style.iconUrl;
+			return { ...feature, properties };
+		}),
+	};
+}
 
 function folderToTreeNodes(
 	folder: KMLFolder,
 	features: GeoJSON.Feature[],
-	styleMap: Map<string, StyleInfo>,
-	path: string,
+	tree: { styleMap: Map<string, StyleInfo>; path: string },
 ): TreeNodeData {
-	const folderValue = `${FOLDER_PREFIX}${path}`;
-	const children: TreeNodeData[] = [];
-
-	for (const fi of folder.featureIndices) {
-		const f = features[fi];
-		children.push({
-			value: `${FEATURE_PREFIX}${fi}`,
-			label: (f.properties?.name as string) ?? `Feature ${fi + 1}`,
+	const { styleMap, path } = tree;
+	const children: TreeNodeData[] = folder.featureIndices.map((index) => {
+		const feature = features[index];
+		return {
+			value: `${FEATURE_PREFIX}${index}`,
+			label: (feature?.properties?.name as string) ?? `Feature ${index + 1}`,
 			nodeProps: {
-				"data-geo-type": f.geometry?.type ?? "Point",
-				"data-color": featureColor(f, styleMap),
+				"data-geo-type": feature?.geometry?.type ?? "Point",
+				"data-color": feature ? featureColor(feature, styleMap) : DEFAULT_COLOR,
 			},
-		});
-	}
+		};
+	});
 
 	for (const child of folder.children) {
 		children.push(
-			folderToTreeNodes(child, features, styleMap, `${path}/${child.name}`),
+			folderToTreeNodes(child, features, {
+				styleMap,
+				path: `${path}/${child.name}`,
+			}),
 		);
 	}
 
 	return {
-		value: folderValue,
+		value: `${FOLDER_PREFIX}${path}`,
 		label: folder.name,
 		children,
 	};
 }
 
-function buildTreeData(
-	folders: KMLFolder[],
-	rootFeatureIndices: number[],
-	features: GeoJSON.Feature[],
-	styleMap: Map<string, StyleInfo>,
-): TreeNodeData[] {
-	const nodes: TreeNodeData[] = [];
-
-	for (const fi of rootFeatureIndices) {
-		const f = features[fi];
-		nodes.push({
-			value: `${FEATURE_PREFIX}${fi}`,
-			label: (f.properties?.name as string) ?? `Feature ${fi + 1}`,
+function buildTreeData(document: GeoDocument): TreeNodeData[] {
+	const { folders, rootFeatureIndices, geojson, styleMap } = document;
+	const nodes: TreeNodeData[] = rootFeatureIndices.map((index) => {
+		const feature = geojson.features[index];
+		return {
+			value: `${FEATURE_PREFIX}${index}`,
+			label: (feature?.properties?.name as string) ?? `Feature ${index + 1}`,
 			nodeProps: {
-				"data-geo-type": f.geometry?.type ?? "Point",
-				"data-color": featureColor(f, styleMap),
+				"data-geo-type": feature?.geometry?.type ?? "Point",
+				"data-color": feature ? featureColor(feature, styleMap) : DEFAULT_COLOR,
 			},
-		});
-	}
-
+		};
+	});
 	for (const folder of folders) {
-		nodes.push(folderToTreeNodes(folder, features, styleMap, folder.name));
+		nodes.push(
+			folderToTreeNodes(folder, geojson.features, {
+				styleMap,
+				path: folder.name,
+			}),
+		);
 	}
-
 	return nodes;
 }
 
-const DEFAULT_CENTER: L.LatLngExpression = [20, 0];
+function appendMarkup(parent: HTMLElement, html: string) {
+	const parsed = new DOMParser().parseFromString(html, "text/html");
+	for (const node of parsed.querySelectorAll(BLOCKED_TAGS)) node.remove();
+	for (const element of parsed.body.querySelectorAll("*")) {
+		for (const attr of [...element.attributes]) {
+			if (attr.name.toLowerCase().startsWith("on")) {
+				element.removeAttribute(attr.name);
+			}
+		}
+	}
+	parent.append(...parsed.body.childNodes);
+}
 
-export default function ViewerKML({ kmlString }: ViewerKMLProps) {
-	const mapRef = useRef<L.Map | null>(null);
+function popupContent(
+	properties: GeoJSON.GeoJsonProperties,
+): HTMLElement | null {
+	const name = typeof properties?.name === "string" ? properties.name : "";
+	const description =
+		typeof properties?.description === "string" ? properties.description : "";
+	if (!(name || description)) return null;
+	const root = document.createElement("div");
+	if (name) {
+		const title = document.createElement("strong");
+		title.textContent = name;
+		root.append(title);
+	}
+	if (description) {
+		if (name) root.append(document.createElement("br"));
+		appendMarkup(root, description);
+	}
+	return root;
+}
 
-	const { geojson, styleMap, folders, rootFeatureIndices } = useMemo(
-		() => kmlToGeoJSON(kmlString),
-		[kmlString],
-	);
+function addIconMarkers(
+	map: MapLibreMap,
+	features: GeoJSON.Feature[],
+): Marker[] {
+	const markers: Marker[] = [];
+	for (const feature of features) {
+		if (feature.geometry?.type !== "Point") continue;
+		const iconUrl = feature.properties?.iconUrl;
+		if (typeof iconUrl !== "string" || !iconUrl) continue;
+		const img = document.createElement("img");
+		img.src = iconUrl;
+		img.alt = "";
+		img.width = 32;
+		img.height = 32;
+		img.draggable = false;
+		const marker = new Marker({ element: img, anchor: "bottom" }).setLngLat([
+			feature.geometry.coordinates[0],
+			feature.geometry.coordinates[1],
+		]);
+		const content = popupContent(feature.properties);
+		if (content) {
+			marker.setPopup(
+				new Popup({ closeButton: true, maxWidth: "280px" }).setDOMContent(
+					content,
+				),
+			);
+		}
+		marker.addTo(map);
+		markers.push(marker);
+	}
+	return markers;
+}
 
-	const treeData = buildTreeData(
-		folders,
-		rootFeatureIndices,
-		geojson.features,
-		styleMap,
+function addGeoLayers(map: MapLibreMap, data: GeoJSON.FeatureCollection) {
+	map.addSource("geo", { type: "geojson", data });
+	map.addLayer({
+		id: "geo-fill",
+		type: "fill",
+		source: "geo",
+		filter: ["in", ["geometry-type"], ["literal", ["Polygon", "MultiPolygon"]]],
+		paint: {
+			"fill-color": ["coalesce", ["get", "polyColor"], DEFAULT_COLOR],
+			"fill-opacity": ["coalesce", ["get", "polyOpacity"], 0.3],
+		},
+	});
+	map.addLayer({
+		id: "geo-line",
+		type: "line",
+		source: "geo",
+		filter: ["in", ["geometry-type"], ["literal", LINE_TYPES]],
+		layout: { "line-cap": "round", "line-join": "round" },
+		paint: {
+			"line-color": ["coalesce", ["get", "lineColor"], DEFAULT_COLOR],
+			"line-opacity": ["coalesce", ["get", "lineOpacity"], 1],
+			"line-width": ["coalesce", ["get", "lineWidth"], 2],
+		},
+	});
+	map.addLayer({
+		id: "geo-point",
+		type: "circle",
+		source: "geo",
+		filter: [
+			"all",
+			["==", ["geometry-type"], "Point"],
+			["!", ["has", "iconUrl"]],
+		],
+		paint: {
+			"circle-radius": 6,
+			"circle-color": ["coalesce", ["get", "polyColor"], DEFAULT_COLOR],
+			"circle-opacity": ["coalesce", ["get", "polyOpacity"], 0.8],
+			"circle-stroke-color": ["coalesce", ["get", "lineColor"], DEFAULT_COLOR],
+			"circle-stroke-width": ["coalesce", ["get", "lineWidth"], 2],
+		},
+	});
+}
+
+export default function ViewerKML({ document }: { document: GeoDocument }) {
+	const containerRef = useRef<HTMLElement>(null);
+	const mapRef = useRef<MapLibreMap | null>(null);
+	const [mapError, setMapError] = useState<string | null>(null);
+	const features = document.geojson.features;
+
+	const treeData = useMemo(() => buildTreeData(document), [document]);
+	const painted = useMemo(
+		() => paintFeatures(features, document.styleMap),
+		[features, document.styleMap],
 	);
 
 	const flyToFeature = useCallback(
 		(value: string) => {
 			if (!value.startsWith(FEATURE_PREFIX)) return;
-			const index = Number(value.slice(FEATURE_PREFIX.length));
-			const feature = geojson.features[index];
-			if (!(feature && mapRef.current)) return;
-			const fb = featureBounds(feature);
-			if (fb) {
-				mapRef.current.flyToBounds(fb, {
-					padding: [60, 60],
-					maxZoom: 16,
-					duration: 0.8,
-				});
-			}
+			const feature = features[Number(value.slice(FEATURE_PREFIX.length))];
+			const bounds = boundsOf(feature?.geometry);
+			if (!(bounds && mapRef.current)) return;
+			mapRef.current.fitBounds(bounds, {
+				padding: 60,
+				maxZoom: 16,
+				duration: 800,
+			});
 		},
-		[geojson.features],
+		[features],
+	);
+	const handleLegendSelect = useCallback(
+		(selected: string[]) => {
+			const value = selected[0];
+			if (value) flyToFeature(value);
+		},
+		[flyToFeature],
 	);
 
-	const bounds = useMemo(() => computeBounds(geojson), [geojson]);
-
 	useEffect(() => {
-		if (mapRef.current && bounds) {
-			mapRef.current.fitBounds(bounds as L.LatLngBoundsExpression, {
-				padding: [40, 40],
-				maxZoom: 16,
+		const container = containerRef.current;
+		if (!container) return;
+
+		let map: MapLibreMap;
+		try {
+			map = new MapLibre({
+				container,
+				style: OSM_STYLE,
+				center: [0, 20],
+				zoom: 1.5,
+				attributionControl: { compact: true },
+				dragRotate: false,
+				pitchWithRotate: false,
 			});
+		} catch (error) {
+			setMapError(
+				error instanceof Error ? error.message : "Could not open map",
+			);
+			return;
 		}
-	}, [bounds]);
+
+		mapRef.current = map;
+		map.addControl(new NavigationControl({ showCompass: false }), "top-right");
+		const markers: Marker[] = [];
+		const popup = new Popup({ closeButton: true, maxWidth: "280px" });
+		let cancelled = false;
+
+		const showPopup = (
+			lngLat: [number, number],
+			properties: GeoJSON.GeoJsonProperties,
+		) => {
+			const content = popupContent(properties);
+			if (!content) return;
+			popup.setLngLat(lngLat).setDOMContent(content).addTo(map);
+		};
+
+		const onClick = (event: MapMouseEvent) => {
+			const hits = map.queryRenderedFeatures(event.point, {
+				layers: ["geo-fill", "geo-line", "geo-point"],
+			});
+			const hit = hits[0];
+			if (!hit) return;
+			showPopup([event.lngLat.lng, event.lngLat.lat], hit.properties);
+		};
+
+		map.on("load", () => {
+			if (cancelled) return;
+			addGeoLayers(map, painted);
+			markers.push(...addIconMarkers(map, painted.features));
+			const bounds = collectionBounds(features);
+			if (bounds) {
+				map.fitBounds(bounds, { padding: 40, maxZoom: 16, duration: 0 });
+			}
+			map.on("click", onClick);
+		});
+
+		const observer = new ResizeObserver(() => {
+			map.resize();
+		});
+		observer.observe(container);
+
+		return () => {
+			cancelled = true;
+			observer.disconnect();
+			for (const marker of markers) marker.remove();
+			map.remove();
+			mapRef.current = null;
+		};
+	}, [painted, features]);
 
 	return (
 		<Box className={styles.container}>
 			<div className={styles.mapArea}>
-				<MapContainer
-					ref={mapRef}
-					center={DEFAULT_CENTER}
-					zoom={2}
-					style={{ width: "100%", height: "100%" }}
-					scrollWheelZoom
-				>
-					<TileLayer
-						attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-						url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-					/>
-					<GeoJSON
-						key={kmlString.length}
-						data={geojson}
-						style={(feature) => {
-							const s = resolveStyle(feature, styleMap);
-							return {
-								color: s?.lineColor ?? DEFAULT_COLOR,
-								opacity: s?.lineOpacity ?? 1,
-								weight: s?.lineWidth ?? 2,
-								fillColor: s?.polyColor ?? DEFAULT_COLOR,
-								fillOpacity: s?.polyOpacity ?? 0.3,
-							};
-						}}
-						pointToLayer={(feature, latlng) => {
-							const s = resolveStyle(feature, styleMap);
-							if (s?.iconUrl) {
-								return L.marker(latlng, {
-									icon: L.icon({
-										iconUrl: s.iconUrl,
-										iconSize: [32, 32],
-										iconAnchor: [16, 32],
-									}),
-								});
-							}
-							return L.circleMarker(latlng, {
-								radius: 6,
-								fillColor: s?.polyColor ?? DEFAULT_COLOR,
-								fillOpacity: s?.polyOpacity ?? 0.8,
-								color: s?.lineColor ?? DEFAULT_COLOR,
-								weight: s?.lineWidth ?? 2,
-							});
-						}}
-						onEachFeature={(feature, layer) => {
-							const parts: string[] = [];
-							if (feature.properties?.name) {
-								parts.push(`<strong>${feature.properties.name}</strong>`);
-							}
-							if (feature.properties?.description) {
-								parts.push(feature.properties.description);
-							}
-							if (parts.length > 0) {
-								layer.bindPopup(parts.join("<br/>"));
-							}
-						}}
-					/>
-				</MapContainer>
+				<section ref={containerRef} className={styles.map} aria-label="Map" />
+				{mapError ? (
+					<Text size="sm" c="red" p="sm" role="alert">
+						{mapError}
+					</Text>
+				) : null}
 			</div>
 			<ViewerKMLLegend
 				data={treeData}
-				onSelect={(selected) => {
-					const value = selected[0];
-					if (value) flyToFeature(value);
-				}}
-				featureCount={geojson.features.length}
+				onSelect={handleLegendSelect}
+				featureCount={features.length}
 			/>
 		</Box>
 	);

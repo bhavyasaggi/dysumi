@@ -11,11 +11,130 @@ import {
 	Text,
 	TextInput,
 } from "@mantine/core";
-import { useState } from "react";
+import {
+	type ChangeEvent,
+	type KeyboardEvent,
+	useCallback,
+	useState,
+} from "react";
 
 import type { CalendarAttendee, CalendarEvent } from "@/lib/utils/ics";
 
 import type { WizardStepProps } from "./types";
+
+function AttendeeRow({
+	att,
+	setFormData,
+}: {
+	att: CalendarAttendee;
+	setFormData: WizardStepProps["setFormData"];
+}) {
+	const handleRoleChange = useCallback(
+		(value: string | null) => {
+			setFormData((prev) => ({
+				...prev,
+				attendees: prev.attendees?.map((a) =>
+					a.email === att.email
+						? {
+								...a,
+								role: value as CalendarAttendee["role"],
+							}
+						: a,
+				),
+			}));
+		},
+		[att.email, setFormData],
+	);
+
+	const handlePartstatChange = useCallback(
+		(value: string | null) => {
+			setFormData((prev) => ({
+				...prev,
+				attendees: prev.attendees?.map((a) =>
+					a.email === att.email
+						? {
+								...a,
+								partstat: value as CalendarAttendee["partstat"],
+							}
+						: a,
+				),
+			}));
+		},
+		[att.email, setFormData],
+	);
+
+	const handleRemove = useCallback(() => {
+		setFormData((prev) => ({
+			...prev,
+			attendees: prev.attendees?.filter((a) => a.email !== att.email),
+		}));
+	}, [att.email, setFormData]);
+
+	return (
+		<Paper p="xs" withBorder>
+			<Group justify="space-between" wrap="nowrap">
+				<Box style={{ flex: 1 }}>
+					<Text size="sm" fw={500}>
+						{att.name ? att.name : att.email}
+					</Text>
+					{att.name ? (
+						<Text size="xs" c="dimmed">
+							{att.email}
+						</Text>
+					) : null}
+				</Box>
+				<Group gap="xs">
+					<Select
+						size="xs"
+						aria-label={`Role for ${att.email}`}
+						value={att.role ?? "REQ-PARTICIPANT"}
+						data={[
+							{ value: "CHAIR", label: "Chair" },
+							{
+								value: "REQ-PARTICIPANT",
+								label: "Required",
+							},
+							{
+								value: "OPT-PARTICIPANT",
+								label: "Optional",
+							},
+							{
+								value: "NON-PARTICIPANT",
+								label: "FYI",
+							},
+						]}
+						onChange={handleRoleChange}
+						style={{ width: 110 }}
+					/>
+					<Select
+						size="xs"
+						aria-label={`Response for ${att.email}`}
+						value={att.partstat ?? "NEEDS-ACTION"}
+						data={[
+							{
+								value: "NEEDS-ACTION",
+								label: "Pending",
+							},
+							{ value: "ACCEPTED", label: "Accepted" },
+							{ value: "DECLINED", label: "Declined" },
+							{
+								value: "TENTATIVE",
+								label: "Tentative",
+							},
+						]}
+						onChange={handlePartstatChange}
+						style={{ width: 100 }}
+					/>
+					<CloseButton
+						size="sm"
+						onClick={handleRemove}
+						aria-label={`Remove ${att.email}`}
+					/>
+				</Group>
+			</Group>
+		</Paper>
+	);
+}
 
 export default function WizardParticipants({
 	formData,
@@ -23,7 +142,7 @@ export default function WizardParticipants({
 }: WizardStepProps) {
 	const [newAttendeeEmail, setNewAttendeeEmail] = useState("");
 
-	const addAttendee = () => {
+	const addAttendee = useCallback(() => {
 		if (!newAttendeeEmail.trim()) return;
 		const attendees = formData.attendees || [];
 		if (attendees.some((a) => a.email === newAttendeeEmail.trim())) return;
@@ -40,14 +159,72 @@ export default function WizardParticipants({
 			],
 		}));
 		setNewAttendeeEmail("");
-	};
+	}, [formData.attendees, newAttendeeEmail, setFormData]);
 
-	const removeAttendee = (email: string) => {
-		setFormData((prev) => ({
-			...prev,
-			attendees: prev.attendees?.filter((a) => a.email !== email),
-		}));
-	};
+	const handleContactChange = useCallback(
+		(e: ChangeEvent<HTMLInputElement>) => {
+			setFormData((prev) => ({
+				...prev,
+				contact: e.target.value,
+			}));
+		},
+		[setFormData],
+	);
+
+	const handleClassificationChange = useCallback(
+		(value: string | null) => {
+			setFormData((prev) => ({
+				...prev,
+				classification: value as CalendarEvent["classification"],
+			}));
+		},
+		[setFormData],
+	);
+
+	const handleOrganizerNameChange = useCallback(
+		(e: ChangeEvent<HTMLInputElement>) => {
+			setFormData((prev) => ({
+				...prev,
+				organizer: {
+					...prev.organizer,
+					email: prev.organizer?.email || "",
+					name: e.target.value,
+				},
+			}));
+		},
+		[setFormData],
+	);
+
+	const handleOrganizerEmailChange = useCallback(
+		(e: ChangeEvent<HTMLInputElement>) => {
+			setFormData((prev) => ({
+				...prev,
+				organizer: {
+					...prev.organizer,
+					email: e.target.value,
+					name: prev.organizer?.name,
+				},
+			}));
+		},
+		[setFormData],
+	);
+
+	const handleNewAttendeeEmailChange = useCallback(
+		(e: ChangeEvent<HTMLInputElement>) => {
+			setNewAttendeeEmail(e.target.value);
+		},
+		[],
+	);
+
+	const handleNewAttendeeKeyDown = useCallback(
+		(e: KeyboardEvent<HTMLInputElement>) => {
+			if (e.key === "Enter") {
+				e.preventDefault();
+				addAttendee();
+			}
+		},
+		[addAttendee],
+	);
 
 	return (
 		<Stack gap="md" mt="md">
@@ -55,14 +232,9 @@ export default function WizardParticipants({
 				<Grid.Col span={{ base: 12, sm: 6 }}>
 					<TextInput
 						label="Contact"
-						placeholder="Contact person or info"
+						placeholder="Contact person or info…"
 						value={formData.contact || ""}
-						onChange={(e) =>
-							setFormData((prev) => ({
-								...prev,
-								contact: e.target.value,
-							}))
-						}
+						onChange={handleContactChange}
 					/>
 				</Grid.Col>
 				<Grid.Col span={{ base: 12, sm: 6 }}>
@@ -74,12 +246,7 @@ export default function WizardParticipants({
 							{ value: "CONFIDENTIAL", label: "Confidential" },
 						]}
 						value={formData.classification || "PUBLIC"}
-						onChange={(value) =>
-							setFormData((prev) => ({
-								...prev,
-								classification: value as CalendarEvent["classification"],
-							}))
-						}
+						onChange={handleClassificationChange}
 					/>
 				</Grid.Col>
 			</Grid>
@@ -90,36 +257,21 @@ export default function WizardParticipants({
 				<Grid.Col span={{ base: 12, sm: 6 }}>
 					<TextInput
 						label="Organizer Name"
-						placeholder="Your name"
+						placeholder="Your name…"
 						value={formData.organizer?.name || ""}
-						onChange={(e) =>
-							setFormData((prev) => ({
-								...prev,
-								organizer: {
-									...prev.organizer,
-									email: prev.organizer?.email || "",
-									name: e.target.value,
-								},
-							}))
-						}
+						onChange={handleOrganizerNameChange}
 					/>
 				</Grid.Col>
 				<Grid.Col span={{ base: 12, sm: 6 }}>
 					<TextInput
 						label="Organizer Email"
-						placeholder="your@email.com"
+						placeholder="name@example.com"
 						type="email"
+						name="organizer-email"
+						autoComplete="email"
+						spellCheck={false}
 						value={formData.organizer?.email || ""}
-						onChange={(e) =>
-							setFormData((prev) => ({
-								...prev,
-								organizer: {
-									...prev.organizer,
-									email: e.target.value,
-									name: prev.organizer?.name,
-								},
-							}))
-						}
+						onChange={handleOrganizerEmailChange}
 					/>
 				</Grid.Col>
 			</Grid>
@@ -128,16 +280,15 @@ export default function WizardParticipants({
 
 			<Group>
 				<TextInput
-					placeholder="attendee@email.com"
+					aria-label="Attendee email"
+					placeholder="attendee@example.com"
 					type="email"
+					name="attendee-email"
+					autoComplete="off"
+					spellCheck={false}
 					value={newAttendeeEmail}
-					onChange={(e) => setNewAttendeeEmail(e.target.value)}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") {
-							e.preventDefault();
-							addAttendee();
-						}
-					}}
+					onChange={handleNewAttendeeEmailChange}
+					onKeyDown={handleNewAttendeeKeyDown}
 					style={{ flex: 1 }}
 				/>
 				<Button onClick={addAttendee} variant="light">
@@ -148,89 +299,7 @@ export default function WizardParticipants({
 			{formData.attendees && formData.attendees.length > 0 && (
 				<Stack gap="xs">
 					{formData.attendees.map((att) => (
-						<Paper key={att.email} p="xs" withBorder>
-							<Group justify="space-between" wrap="nowrap">
-								<Box style={{ flex: 1 }}>
-									<Text size="sm" fw={500}>
-										{att.name || att.email}
-									</Text>
-									{att.name ? (
-										<Text size="xs" c="dimmed">
-											{att.email}
-										</Text>
-									) : null}
-								</Box>
-								<Group gap="xs">
-									<Select
-										size="xs"
-										value={att.role || "REQ-PARTICIPANT"}
-										data={[
-											{ value: "CHAIR", label: "Chair" },
-											{
-												value: "REQ-PARTICIPANT",
-												label: "Required",
-											},
-											{
-												value: "OPT-PARTICIPANT",
-												label: "Optional",
-											},
-											{
-												value: "NON-PARTICIPANT",
-												label: "FYI",
-											},
-										]}
-										onChange={(value) =>
-											setFormData((prev) => ({
-												...prev,
-												attendees: prev.attendees?.map((a) =>
-													a.email === att.email
-														? {
-																...a,
-																role: value as CalendarAttendee["role"],
-															}
-														: a,
-												),
-											}))
-										}
-										style={{ width: 110 }}
-									/>
-									<Select
-										size="xs"
-										value={att.partstat || "NEEDS-ACTION"}
-										data={[
-											{
-												value: "NEEDS-ACTION",
-												label: "Pending",
-											},
-											{ value: "ACCEPTED", label: "Accepted" },
-											{ value: "DECLINED", label: "Declined" },
-											{
-												value: "TENTATIVE",
-												label: "Tentative",
-											},
-										]}
-										onChange={(value) =>
-											setFormData((prev) => ({
-												...prev,
-												attendees: prev.attendees?.map((a) =>
-													a.email === att.email
-														? {
-																...a,
-																partstat: value as CalendarAttendee["partstat"],
-															}
-														: a,
-												),
-											}))
-										}
-										style={{ width: 100 }}
-									/>
-									<CloseButton
-										size="sm"
-										onClick={() => removeAttendee(att.email)}
-									/>
-								</Group>
-							</Group>
-						</Paper>
+						<AttendeeRow key={att.email} att={att} setFormData={setFormData} />
 					))}
 				</Stack>
 			)}

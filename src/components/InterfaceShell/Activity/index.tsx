@@ -1,4 +1,5 @@
 import { Group, Text } from "@mantine/core";
+import { useCallback } from "react";
 import { useReduxDispatch, useReduxSelector } from "@/lib/redux/hooks";
 import {
 	actionInterfaceOpenFile,
@@ -16,6 +17,16 @@ export default function InterfaceShellActivity() {
 	const openFiles = useReduxSelector(selectorInterfaceGetOpenFiles);
 	const activeFile = useReduxSelector(selectorInterfaceGetActiveFile);
 	const isReady = useReduxSelector(selectorInterfaceGetIsReady);
+
+	const onFileChange = useCallback(
+		(value: string) => {
+			const nextActiveFile = openFiles.find((f) => f.path === value);
+			if (nextActiveFile) {
+				dispatch(actionInterfaceOpenFile(nextActiveFile));
+			}
+		},
+		[dispatch, openFiles],
+	);
 
 	return (
 		<Group wrap="nowrap" gap={0}>
@@ -41,12 +52,7 @@ export default function InterfaceShellActivity() {
 				disabled={!isReady}
 				data={openFiles}
 				value={activeFile}
-				onChange={(value) => {
-					const nextActiveFile = openFiles.find((f) => f.path === value);
-					if (nextActiveFile) {
-						dispatch(actionInterfaceOpenFile(nextActiveFile));
-					}
-				}}
+				onChange={onFileChange}
 			/>
 		</Group>
 	);

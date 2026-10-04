@@ -58,7 +58,7 @@ export function clientBoundary<T extends React.ComponentType<any>>(
 			);
 		};
 
-		render() {
+		override render() {
 			if (this.state.hasError) {
 				return options?.loading?.(this.state.hasError, this.resetError) ?? null;
 			}

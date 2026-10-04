@@ -1,4 +1,4 @@
-// Easter Egg: BMP files get the classic MS Paint treatment!
+// Bitmap files stay in the browser and render with the image element.
 
 import { Center, Loader, Stack, Text } from "@mantine/core";
 import { useMemo } from "react";
@@ -58,7 +58,7 @@ export default function ScreenPaint() {
 
 	if (processing) {
 		return (
-			<Center py="xl" px="sm" h="100%">
+			<Center py="xl" px="sm" h="100%" role="status" aria-label="Loading…">
 				<Loader size="xl" type="dots" color="gray" />
 			</Center>
 		);
@@ -68,7 +68,9 @@ export default function ScreenPaint() {
 		return (
 			<Center py="xl" px="sm" h="100%">
 				<Stack align="center" gap="sm">
-					<Text c="red">Error: {error}</Text>
+					<Text c="red" role="alert">
+						Error: {error}
+					</Text>
 				</Stack>
 			</Center>
 		);
@@ -77,7 +79,7 @@ export default function ScreenPaint() {
 	return (
 		<ViewerPaint
 			key={activeFile?.path}
-			src={imageUrl || undefined}
+			src={imageUrl ? imageUrl : undefined}
 			fileName={fileName}
 		/>
 	);

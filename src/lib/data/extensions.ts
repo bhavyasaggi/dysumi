@@ -25,7 +25,6 @@ export const IMAGE_EXTENSIONS = new Set([
 	"png",
 	"gif",
 	"webp",
-	"svg",
 	"ico",
 	"tiff",
 	"tif",
@@ -88,13 +87,67 @@ export const TEX_EXTENSIONS = new Set(["tex", "latex", "ltx"]);
 export const TABULAR_EXTENSIONS = new Set(["csv", "tsv", "psv"]);
 
 // HTTP/REST file extensions
-export const REST_EXTENSIONS = new Set(["http", "rest"]);
+export const REST_EXTENSIONS = new Set(["http", "rest", "curl"]);
 
 // GraphQL file extensions
 export const GRAPHQL_EXTENSIONS = new Set(["graphql", "gql"]);
 
-// KML/KMZ geographic file extensions
-export const KML_EXTENSIONS = new Set(["kml", "kmz"]);
+// KML, KMZ, and Garmin TCX geographic file extensions
+export const KML_EXTENSIONS = new Set(["kml", "kmz", "tcx", "geojson"]);
 
 // HAR (HTTP Archive) file extensions
 export const HAR_EXTENSIONS = new Set(["har"]);
+
+// OFX, QFX, and QIF financial statements
+export const FINANCE_EXTENSIONS = new Set(["ofx", "qfx", "qif"]);
+
+// Excalidraw scene files
+export const EXCALIDRAW_EXTENSIONS = new Set(["excalidraw"]);
+
+// UNIX mbox mailboxes and single RFC 822 messages
+export const MAIL_EXTENSIONS = new Set(["mbox", "eml"]);
+
+// Mermaid diagram source
+export const MERMAID_EXTENSIONS = new Set(["mermaid", "mmd"]);
+
+// SVG files open in the local SVGO optimizer
+export const SVG_EXTENSIONS = new Set(["svg"]);
+
+// JWT, JWK, JWKS, JWE, and OpenID discovery files
+export const JOSE_EXTENSIONS = new Set([
+	"jwt",
+	"jws",
+	"jwe",
+	"jwk",
+	"jwks",
+	"well-known",
+]);
+
+// BitTorrent metainfo files
+export const TORRENT_EXTENSIONS = new Set(["torrent"]);
+
+// Flutter ARB, gettext, XLIFF, and Apple strings catalogs
+export const CATALOG_EXTENSIONS = new Set([
+	"arb",
+	"po",
+	"pot",
+	"xlf",
+	"xliff",
+	"xlif",
+	"strings",
+]);
+
+// vCard address books
+export const VCARD_EXTENSIONS = new Set(["vcf"]);
+
+// FictionBook 2
+export const FB2_EXTENSIONS = new Set(["fb2"]);
+
+// DjVu documents
+export const DJVU_EXTENSIONS = new Set(["djvu"]);
+
+// Compiled HTML Help
+export const CHM_EXTENSIONS = new Set(["chm"]);
+
+// Standard MIDI files. Browsers cannot decode these in an audio element.
+export const MIDI_EXTENSIONS = new Set(["mid", "midi"]);

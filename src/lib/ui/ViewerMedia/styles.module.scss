@@ -1,0 +1,87 @@
+.shell {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+	background: #000;
+}
+
+.skin {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+}
+
+// The audio element stays in the player so the shared controls can drive it.
+// The stage is in normal flow so the canvas has a real height.
+.stage {
+	position: relative;
+	flex: 1 1 auto;
+	width: 100%;
+	min-height: 240px;
+	background: #05070a;
+}
+
+.canvas {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	display: block;
+}
+
+.preset {
+	position: absolute;
+	z-index: 2;
+	top: 10px;
+	right: 12px;
+	left: 12px;
+	margin: 0;
+	overflow: hidden;
+	color: rgb(255 255 255 / 90%);
+	font-size: 12px;
+	line-height: 1.3;
+	letter-spacing: 0.02em;
+	text-overflow: ellipsis;
+	text-shadow: 0 1px 2px rgb(0 0 0 / 72%);
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+.note {
+	position: absolute;
+	z-index: 2;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	padding: 24px;
+	color: #e2e8f0;
+	text-align: center;
+	pointer-events: none;
+}
+
+.audio {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.midi {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	width: 100%;
+	min-height: 240px;
+	background: #05070a;
+}

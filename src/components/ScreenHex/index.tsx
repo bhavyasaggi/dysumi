@@ -36,7 +36,7 @@ export default function ScreenHex() {
 
 	if (processing) {
 		return (
-			<Center py="xl" px="sm">
+			<Center py="xl" px="sm" role="status" aria-label="Loading…">
 				<Loader size="xl" type="dots" color="gray" />
 			</Center>
 		);

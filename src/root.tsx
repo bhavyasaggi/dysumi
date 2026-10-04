@@ -12,24 +12,46 @@ import "@mantine/nprogress/styles.css";
 
 import { ColorSchemeScript, createTheme, MantineProvider } from "@mantine/core";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import type React from "react";
 import { useEffect, useRef } from "react";
 import { Provider } from "react-redux";
 import { useNavigation } from "react-router";
 import { makeStore, type ReduxStore } from "@/lib/redux/store";
+import { CONTENT_SECURITY_POLICY } from "@/lib/seo";
+import { SkipLink } from "@/lib/ui/SkipLink";
 
 import type { Route } from "./+types/root";
+
+dayjs.extend(customParseFormat);
 
 const theme = createTheme({
 	defaultRadius: 0,
 });
 
 // biome-ignore lint/style/useComponentExportOnlyModules: React Router convention
-export const links: Route.LinksFunction = () => [];
+export const links: Route.LinksFunction = () => [
+	{ rel: "icon", href: "/favicon.ico", sizes: "any" },
+	{
+		rel: "icon",
+		href: "/favicon-32x32.png",
+		type: "image/png",
+		sizes: "32x32",
+	},
+	{
+		rel: "icon",
+		href: "/favicon-16x16.png",
+		type: "image/png",
+		sizes: "16x16",
+	},
+	{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+	{ rel: "manifest", href: "/site.webmanifest" },
+];
 
 export function Layout({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en">
+		<html lang="en" data-mantine-color-scheme="light">
 			<head>
 				<meta charSet="utf-8" />
 				<meta
@@ -38,11 +60,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				/>
 				<meta name="application-name" content="dysumi" />
 				<meta name="theme-color" content="#228be6" />
+				<meta name="color-scheme" content="light dark" />
+				<meta name="referrer" content="no-referrer" />
+				{import.meta.env.PROD ? (
+					<meta
+						httpEquiv="Content-Security-Policy"
+						content={CONTENT_SECURITY_POLICY}
+					/>
+				) : null}
 				<ColorSchemeScript />
 				<Meta />
 				<Links />
 			</head>
 			<body>
+				<SkipLink />
 				{children}
 				<ScrollRestoration />
 				<Scripts />
@@ -52,15 +83,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-	let message = "Oops!";
-	let details = "An unexpected error occurred.";
+	let message = "Something went wrong";
+	let details = "Go back home and try again.";
 	let stack: string | undefined;
 
 	if (isRouteErrorResponse(error)) {
-		message = error.status === 404 ? "404" : "Error";
+		message = error.status === 404 ? "Page not found" : "Something went wrong";
 		details =
 			error.status === 404
-				? "The requested page could not be found."
+				? "That page does not exist. Go back home and try again."
 				: error.statusText || details;
 	} else if (import.meta.env.DEV && error && error instanceof Error) {
 		details = error.message;
@@ -68,14 +99,22 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 	}
 
 	return (
-		<main className="pt-16 p-4 container mx-auto">
+		// biome-ignore lint/correctness/useUniqueElementIds: skip-link target is the single main landmark
+		<main
+			id="main"
+			tabIndex={-1}
+			style={{ padding: "4rem 1rem", maxWidth: 720 }}
+		>
 			<h1>{message}</h1>
-			<p>{details}</p>
+			<p role="alert">{details}</p>
 			{stack ? (
-				<pre className="w-full p-4 overflow-x-auto">
+				<pre>
 					<code>{stack}</code>
 				</pre>
 			) : null}
+			<p>
+				<a href="/">Go back home</a>
+			</p>
 		</main>
 	);
 }

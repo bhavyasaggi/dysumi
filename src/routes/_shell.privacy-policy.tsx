@@ -1,18 +1,23 @@
+// biome-ignore-all lint/style/noExcessiveLinesPerFile: legal text stays in one page
 import { Container, Typography } from "@mantine/core";
+
+import { pageMeta } from "@/lib/seo";
 
 // biome-ignore lint/style/useComponentExportOnlyModules: React Router convention
 export function meta() {
-	return [
-		{ title: "Privacy Policy" },
-		{ name: "description", content: "Privacy Policy" },
-	];
+	return pageMeta({
+		title: "Privacy Policy · dysumi",
+		description:
+			"How dysumi handles information. The app keeps files in the browser on your device.",
+		path: "/privacy-policy",
+	});
 }
 
 export default function RouteShellPrivacyPolicy() {
 	return (
 		<Container py="lg">
 			<Typography>
-				<h2>PRIVACY NOTICE</h2>
+				<h1>Privacy notice</h1>
 				<p>
 					Last updated <span style={{ color: "#8351f9" }}>[Date]</span>
 				</p>
@@ -58,13 +63,13 @@ export default function RouteShellPrivacyPolicy() {
 					<a
 						href="https://termly.io/products/privacy-policy-generator/"
 						target="_blank"
-						rel="noopener"
+						rel="noopener noreferrer"
 					>
 						Privacy Policy Generator
 					</a>
 					.
 				</p>
-				<h3>SUMMARY OF KEY POINTS</h3>
+				<h2>SUMMARY OF KEY POINTS</h2>
 				<p>
 					<strong>
 						<em>
@@ -138,7 +143,7 @@ export default function RouteShellPrivacyPolicy() {
 					<span style={{ color: "#8351f9" }}>[Company Name]</span> does with any
 					information we collect? Review the notice in full below.
 				</p>
-				<h3>TABLE OF CONTENTS</h3>
+				<h2>TABLE OF CONTENTS</h2>
 				<p>
 					1. WHAT INFORMATION DO WE COLLECT?
 					<br />
@@ -178,7 +183,7 @@ export default function RouteShellPrivacyPolicy() {
 					18. HOW CAN YOU REVIEW, UPDATE, OR DELETE THE DATA WE COLLECT FROM
 					YOU?
 				</p>
-				<h3>1. WHAT INFORMATION DO WE COLLECT?</h3>
+				<h2>1. WHAT INFORMATION DO WE COLLECT?</h2>
 				<p>
 					<strong>Personal information you disclose to us</strong>
 				</p>
@@ -428,7 +433,7 @@ export default function RouteShellPrivacyPolicy() {
 						<a
 							href="https://www.facebook.com/about/privacy/"
 							target="_blank"
-							rel="noopener"
+							rel="noopener noreferrer"
 						>
 							Facebook
 						</a>{" "}
@@ -442,14 +447,14 @@ export default function RouteShellPrivacyPolicy() {
 						<a
 							href="https://developers.facebook.com/docs/permissions/reference"
 							target="_blank"
-							rel="noopener"
+							rel="noopener noreferrer"
 						>
 							Facebook Permissions Reference
 						</a>{" "}
 						page.]
 					</span>
 				</p>
-				<h3>2. HOW DO WE PROCESS YOUR INFORMATION?</h3>
+				<h2>2. HOW DO WE PROCESS YOUR INFORMATION?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> We process your information to provide,
@@ -553,7 +558,7 @@ export default function RouteShellPrivacyPolicy() {
 						<span style={{ color: "#8351f9" }}>[Other]</span>
 					</li>
 				</ul>
-				<h3>3. WHAT LEGAL BASES DO WE RELY ON TO PROCESS YOUR INFORMATION?</h3>
+				<h2>3. WHAT LEGAL BASES DO WE RELY ON TO PROCESS YOUR INFORMATION?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> We only process your personal information
@@ -714,7 +719,7 @@ export default function RouteShellPrivacyPolicy() {
 						regulations
 					</li>
 				</ul>
-				<h3>4. WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?</h3>
+				<h2>4. WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> We may share information in specific
@@ -776,13 +781,13 @@ export default function RouteShellPrivacyPolicy() {
 						<strong>When we use Google Maps Platform APIs.</strong> We may share
 						your information with certain Google Maps Platform APIs (e.g.,
 						Google Maps API, Places API). To find out more about Google’s
-						Privacy Policy, please refer to this{" "}
+						Privacy Policy, please refer to the{" "}
 						<a
 							href="https://policies.google.com/privacy"
 							target="_blank"
-							rel="noopener"
+							rel="noopener noreferrer"
 						>
-							link
+							Google Privacy Policy
 						</a>
 						. We use certain Google Maps Platform APIs to retrieve certain
 						information when you make location-specific requests. This includes:{" "}
@@ -846,7 +851,7 @@ export default function RouteShellPrivacyPolicy() {
 						your account with the relevant reward.
 					</li>
 				</ul>
-				<h3>5. WHAT IS OUR STANCE ON THIRD-PARTY WEBSITES?</h3>
+				<h2>5. WHAT IS OUR STANCE ON THIRD-PARTY WEBSITES?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> We are not responsible for the safety of
@@ -874,7 +879,7 @@ export default function RouteShellPrivacyPolicy() {
 					Services. You should review the policies of such third parties and
 					contact them directly to respond to your questions.
 				</p>
-				<h3>6. DO WE USE COOKIES AND OTHER TRACKING TECHNOLOGIES?</h3>
+				<h2>6. DO WE USE COOKIES AND OTHER TRACKING TECHNOLOGIES?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> We may use cookies and other tracking
@@ -888,7 +893,7 @@ export default function RouteShellPrivacyPolicy() {
 					set out in our Cookie Notice:{" "}
 					<span style={{ color: "#8351f9" }}>[Cookie Notice URL]</span>.
 				</p>
-				<h3>7. HOW DO WE HANDLE YOUR SOCIAL LOGINS?</h3>
+				<h2>7. HOW DO WE HANDLE YOUR SOCIAL LOGINS?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> If you choose to register or log in to
@@ -920,7 +925,7 @@ export default function RouteShellPrivacyPolicy() {
 					your personal information, and how you can set your privacy
 					preferences on their sites and apps.
 				</p>
-				<h3>8. IS YOUR INFORMATION TRANSFERRED INTERNATIONALLY?</h3>
+				<h2>8. IS YOUR INFORMATION TRANSFERRED INTERNATIONALLY?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> We may transfer, store, and process your
@@ -1016,7 +1021,7 @@ export default function RouteShellPrivacyPolicy() {
 					<a
 						href="https://www.privacyshield.gov/welcome"
 						target="_blank"
-						rel="noopener"
+						rel="noopener noreferrer"
 					>
 						www.privacyshield.gov
 					</a>
@@ -1067,7 +1072,7 @@ export default function RouteShellPrivacyPolicy() {
 						<a
 							href="https://ec.europa.eu/justice/article-29/structure/data-protection-authorities/index_en.htm"
 							target="_blank"
-							rel="noopener"
+							rel="noopener noreferrer"
 						>
 							list of EU DPAs
 						</a>
@@ -1124,7 +1129,7 @@ export default function RouteShellPrivacyPolicy() {
 						of individuals to access their personal data.
 					</li>
 				</ul>
-				<h3>9. HOW LONG DO WE KEEP YOUR INFORMATION?</h3>
+				<h2>9. HOW LONG DO WE KEEP YOUR INFORMATION?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> We keep your information for as long as
@@ -1153,7 +1158,7 @@ export default function RouteShellPrivacyPolicy() {
 					securely store your personal information and isolate it from any
 					further processing until deletion is possible.
 				</p>
-				<h3>10. HOW DO WE KEEP YOUR INFORMATION SAFE?</h3>
+				<h2>10. HOW DO WE KEEP YOUR INFORMATION SAFE?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> We aim to protect your personal
@@ -1175,7 +1180,7 @@ export default function RouteShellPrivacyPolicy() {
 					our Services is at your own risk. You should only access the Services
 					within a secure environment.
 				</p>
-				<h3>11. DO WE COLLECT INFORMATION FROM MINORS?</h3>
+				<h2>11. DO WE COLLECT INFORMATION FROM MINORS?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> We do not knowingly collect data from or
@@ -1194,7 +1199,7 @@ export default function RouteShellPrivacyPolicy() {
 					please contact us at{" "}
 					<span style={{ color: "#8351f9" }}>[Email Address]</span>.
 				</p>
-				<h3>12. WHAT ARE YOUR PRIVACY RIGHTS?</h3>
+				<h2>12. WHAT ARE YOUR PRIVACY RIGHTS?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> In some regions, such as the European
@@ -1228,7 +1233,7 @@ export default function RouteShellPrivacyPolicy() {
 					<a
 						href="https://edpb.europa.eu/about-edpb/about-edpb/members_en"
 						target="_blank"
-						rel="noopener"
+						rel="noopener noreferrer"
 					>
 						https://edpb.europa.eu/about-edpb/about-edpb/members_en
 					</a>
@@ -1240,7 +1245,7 @@ export default function RouteShellPrivacyPolicy() {
 					<a
 						href="https://www.edoeb.admin.ch/edoeb/en/home.html"
 						target="_blank"
-						rel="noopener"
+						rel="noopener noreferrer"
 					>
 						https://www.edoeb.admin.ch/edoeb/en/home.html
 					</a>
@@ -1312,7 +1317,7 @@ export default function RouteShellPrivacyPolicy() {
 					<a
 						href="https://optout.aboutads.info/?c=2&amp;lang=EN"
 						target="_blank"
-						rel="noopener"
+						rel="noopener noreferrer"
 					>
 						http://www.aboutads.info/choices/
 					</a>
@@ -1323,7 +1328,7 @@ export default function RouteShellPrivacyPolicy() {
 					If you have questions or comments about your privacy rights, you may
 					email us at <span style={{ color: "#8351f9" }}>[Email Address]</span>.
 				</p>
-				<h3>13. CONTROLS FOR DO-NOT-TRACK FEATURES</h3>
+				<h2>13. CONTROLS FOR DO-NOT-TRACK FEATURES</h2>
 				<p>
 					Most web browsers and some mobile operating systems and mobile
 					applications include a Do-Not-Track (“DNT”) feature or setting you can
@@ -1337,7 +1342,7 @@ export default function RouteShellPrivacyPolicy() {
 					inform you about that practice in a revised version of this privacy
 					notice.
 				</p>
-				<h3>14. DO CALIFORNIA RESIDENTS HAVE SPECIFIC PRIVACY RIGHTS?</h3>
+				<h2>14. DO CALIFORNIA RESIDENTS HAVE SPECIFIC PRIVACY RIGHTS?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> Yes, if you are a resident of California,
@@ -2192,7 +2197,7 @@ export default function RouteShellPrivacyPolicy() {
 					year can be found here:{" "}
 					<span style={{ color: "#8351f9" }}>[Metrics URL]</span>.
 				</p>
-				<h3>15. DO VIRGINIA RESIDENTS HAVE SPECIFIC PRIVACY RIGHTS?</h3>
+				<h2>15. DO VIRGINIA RESIDENTS HAVE SPECIFIC PRIVACY RIGHTS?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> Yes, if you are a resident of Virginia,
@@ -2327,13 +2332,13 @@ export default function RouteShellPrivacyPolicy() {
 					<a
 						href="https://www.oag.state.va.us/consumer-protection/index.php/file-a-complaint"
 						target="_blank"
-						rel="noopener"
+						rel="noopener noreferrer"
 					>
 						submit a complaint
 					</a>
 					.
 				</p>
-				<h3>16. DO WE MAKE UPDATES TO THIS NOTICE?</h3>
+				<h2>16. DO WE MAKE UPDATES TO THIS NOTICE?</h2>
 				<p>
 					<em>
 						<strong>In Short:</strong> Yes, we will update this notice as
@@ -2349,7 +2354,7 @@ export default function RouteShellPrivacyPolicy() {
 					you a notification. We encourage you to review this privacy notice
 					frequently to be informed of how we are protecting your information.
 				</p>
-				<h3>17. HOW CAN YOU CONTACT US ABOUT THIS NOTICE?</h3>
+				<h2>17. HOW CAN YOU CONTACT US ABOUT THIS NOTICE?</h2>
 				<p>
 					If you have questions or comments about this notice, you may contact
 					our Data Protection Officer (DPO),{" "}
@@ -2428,10 +2433,10 @@ export default function RouteShellPrivacyPolicy() {
 					<br />
 					Fax: <span style={{ color: "#8351f9" }}>[Fax Number]</span>
 				</p>
-				<h3>
+				<h2>
 					18. HOW CAN YOU REVIEW, UPDATE, OR DELETE THE DATA WE COLLECT FROM
 					YOU?
-				</h3>
+				</h2>
 				<p>
 					Based on the applicable laws of your country, you may have the right
 					to request access to the personal information we collect from you,

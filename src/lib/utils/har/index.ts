@@ -113,10 +113,7 @@ function parseTimings(raw: Record<string, number>): HarTimings {
 	};
 }
 
-function resolveTransferSize(
-	transferSize: number,
-	bodySize: number,
-): number {
+function resolveTransferSize(transferSize: number, bodySize: number): number {
 	if (transferSize > -1) return transferSize;
 	if (bodySize > -1) return bodySize;
 	return 0;
@@ -146,7 +143,11 @@ function parseEntry(
 	const rawTransferSize: number = res._transferSize ?? -1;
 	const rawBodySize: number = res.bodySize ?? -1;
 	const transferSize = resolveTransferSize(rawTransferSize, rawBodySize);
-	const size = resolveUncompressedSize(contentSize, rawTransferSize, rawBodySize);
+	const size = resolveUncompressedSize(
+		contentSize,
+		rawTransferSize,
+		rawBodySize,
+	);
 	const timings = parseTimings(e.timings ?? {});
 
 	const time: number =
@@ -231,12 +232,16 @@ function parsePageTimings(
 		}
 	}
 
-	if (onContentLoad === Number.POSITIVE_INFINITY && onLoad === Number.POSITIVE_INFINITY) {
+	if (
+		onContentLoad === Number.POSITIVE_INFINITY &&
+		onLoad === Number.POSITIVE_INFINITY
+	) {
 		return null;
 	}
 
 	return {
-		onContentLoad: onContentLoad === Number.POSITIVE_INFINITY ? 0 : onContentLoad,
+		onContentLoad:
+			onContentLoad === Number.POSITIVE_INFINITY ? 0 : onContentLoad,
 		onLoad: onLoad === Number.POSITIVE_INFINITY ? 0 : onLoad,
 	};
 }
@@ -295,8 +300,8 @@ export function formatBytes(bytes: number): string {
 export function formatTime(ms: number): string {
 	if (ms < 1) return "<1 ms";
 	if (ms < 1000) return `${Math.round(ms)} ms`;
-	if (ms < 60000) return `${Math.ceil(ms / 10) / 100} s`;
-	return `${Math.round(ms / 60000)} m`;
+	if (ms < 60_000) return `${Math.ceil(ms / 10) / 100} s`;
+	return `${Math.round(ms / 60_000)} m`;
 }
 
 export function statusColor(status: number): string {

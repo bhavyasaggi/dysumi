@@ -8,9 +8,18 @@ import {
 	Paper,
 	Space,
 	Text,
+	VisuallyHidden,
 } from "@mantine/core";
+import clsx from "clsx";
+import { useCallback, useState } from "react";
 
 import Landing from "@/components/Landing";
+import landingStyles from "@/components/Landing/styles.module.scss";
+import {
+	pageMeta,
+	SITE_DESCRIPTION,
+	softwareApplicationSchema,
+} from "@/lib/seo";
 import Icon from "@/lib/ui/Icon";
 import Image from "@/lib/ui/Image";
 import Link from "@/lib/ui/Link";
@@ -19,25 +28,26 @@ const EXTENSIONS = [
 	".txt",
 	".md",
 	".adoc",
+	".asciidoc",
 	".tex",
 	".rst",
 	".fb2",
 	".djvu",
-	".drawio",
 	".excalidraw",
 	".mermaid",
-	".plantuml",
+	".mmd",
 	".json",
 	".yml",
 	".yaml",
 	".toml",
 	".csv",
 	".tsv",
-	".ofx",
+	".ofx", // "pain.001", "pain.002",
 	".qif",
 	".qfx",
 	".ledger",
 	".hledger",
+	".journal",
 	".mbox",
 	".eml",
 	".ics",
@@ -54,6 +64,7 @@ const EXTENSIONS = [
 	".mp4",
 	".webm",
 	".midi",
+	".mid",
 	".torrent",
 	".nfo",
 	".bin",
@@ -68,27 +79,38 @@ const EXTENSIONS = [
 	".xlif",
 	".strings",
 	".kml",
+	".kmz",
+	".tcx",
 	".geojson",
 	".http",
 	".rest",
 	".graphql",
 	".har",
 	".curl",
-	".sqlite",
-	".parquet",
-	".arrow",
-	".duckdb",
 	".jwt",
 	".jwk",
+	".jwks",
+	".jwe",
 	".well-known",
 ];
 
 // biome-ignore lint/style/useComponentExportOnlyModules: React Router convention
 export function meta() {
-	return [{ title: "dysumi" }, { name: "description", content: "Welcome!" }];
+	return [
+		...pageMeta({
+			title: "dysumi",
+			description: SITE_DESCRIPTION,
+			path: "/",
+		}),
+		softwareApplicationSchema(),
+	];
 }
 
 export default function RouteShellIndex() {
+	const [formatsPaused, setFormatsPaused] = useState(false);
+	const toggleFormats = useCallback(() => {
+		setFormatsPaused((current) => !current);
+	}, []);
 	return (
 		<>
 			<Landing bg="black">
@@ -128,7 +150,11 @@ export default function RouteShellIndex() {
 								zIndex: "var(--mantine-z-index-app)",
 							}}
 						>
-							<Landing.Title order={1} fz="clamp(2rem, 20dvw, 12rem)">
+							<Landing.Title
+								order={1}
+								fz="clamp(2rem, 20dvw, 12rem)"
+								translate="no"
+							>
 								dysumi
 							</Landing.Title>
 						</Paper>
@@ -164,17 +190,47 @@ export default function RouteShellIndex() {
 				<Container
 					component={Space}
 					h="420px"
+					role="img"
+					aria-label="Preview of the dysumi editor"
 					style={{
 						background: "#000 url('/demo-1.png') right top / cover no-repeat",
 					}}
 				/>
-				<Marquee bg="dark" py="xl" gap="xl" fadeEdges={false}>
+				<VisuallyHidden>
+					Supported formats: {EXTENSIONS.join(" ")}
+				</VisuallyHidden>
+				<Marquee
+					bg="dark"
+					py="xl"
+					gap="xl"
+					fadeEdges={false}
+					pauseOnHover
+					aria-hidden="true"
+					classNames={{
+						content: clsx(
+							landingStyles.marquee,
+							formatsPaused && landingStyles.marqueePaused,
+						),
+					}}
+				>
 					{EXTENSIONS.map((ext) => (
 						<Text key={ext} fz="h1" fw="bold" c="gray" span>
 							{ext}
 						</Text>
 					))}
 				</Marquee>
+				<Center py="sm">
+					<Button
+						variant="subtle"
+						color="gray"
+						size="compact-sm"
+						onClick={toggleFormats}
+						aria-pressed={formatsPaused}
+						style={{ color: "#f8f9fa" }}
+					>
+						{formatsPaused ? "Play formats" : "Pause formats"}
+					</Button>
+				</Center>
 			</Box>
 		</>
 	);

@@ -114,3 +114,20 @@
     drop-shadow(var(--gx) var(--gy) var(--gb) rgba(0,255,0,var(--a)))
     drop-shadow(var(--bx) var(--by) 1px rgba(0,0,255,var(--a)));
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    animation: none !important;
+  }
+}
+
+.marqueePaused {
+  animation-play-state: paused !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glitch::before,
+  .glitch::after {
+    animation: none;
+  }
+}

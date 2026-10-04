@@ -7,6 +7,7 @@ import {
 	Stack,
 	Text,
 } from "@mantine/core";
+import { useCallback } from "react";
 
 import type { WizardStepProps } from "./types";
 
@@ -24,38 +25,80 @@ const ALARM_PRESETS = [
 ];
 
 function formatAlarmTrigger(trigger: string): string {
-	const preset = ALARM_PRESETS.find((p) => p.value === trigger);
+	const preset = ALARM_PRESETS.find((item) => item.value === trigger);
 	if (preset) return preset.label;
 	return trigger;
+}
+
+function AlarmRow({
+	action,
+	trigger,
+	onRemove,
+}: {
+	action: string;
+	trigger: string;
+	onRemove: (trigger: string) => void;
+}) {
+	const remove = useCallback(() => {
+		onRemove(trigger);
+	}, [onRemove, trigger]);
+	return (
+		<Paper p="xs" withBorder>
+			<Group justify="space-between" wrap="nowrap">
+				<Group gap="xs">
+					<Badge variant="light" size="sm">
+						{action}
+					</Badge>
+					<Text size="sm">{formatAlarmTrigger(trigger)}</Text>
+				</Group>
+				<CloseButton
+					size="sm"
+					onClick={remove}
+					aria-label={`Remove reminder ${formatAlarmTrigger(trigger)}`}
+				/>
+			</Group>
+		</Paper>
+	);
 }
 
 export default function WizardReminders({
 	formData,
 	setFormData,
 }: WizardStepProps) {
-	const addAlarm = (trigger: string) => {
-		const alarms = formData.alarms || [];
-		if (alarms.some((a) => a.trigger === trigger)) return;
+	const addAlarm = useCallback(
+		(trigger: string) => {
+			const alarms = formData.alarms || [];
+			if (alarms.some((alarm) => alarm.trigger === trigger)) return;
 
-		setFormData((prev) => ({
-			...prev,
-			alarms: [
-				...(prev.alarms || []),
-				{
-					action: "DISPLAY" as const,
-					trigger,
-					description: prev.summary || "Reminder",
-				},
-			],
-		}));
-	};
-
-	const removeAlarm = (trigger: string) => {
-		setFormData((prev) => ({
-			...prev,
-			alarms: prev.alarms?.filter((a) => a.trigger !== trigger),
-		}));
-	};
+			setFormData((prev) => ({
+				...prev,
+				alarms: [
+					...(prev.alarms || []),
+					{
+						action: "DISPLAY" as const,
+						trigger,
+						description: prev.summary || "Reminder",
+					},
+				],
+			}));
+		},
+		[formData.alarms, setFormData],
+	);
+	const removeAlarm = useCallback(
+		(trigger: string) => {
+			setFormData((prev) => ({
+				...prev,
+				alarms: prev.alarms?.filter((alarm) => alarm.trigger !== trigger),
+			}));
+		},
+		[setFormData],
+	);
+	const onAddAlarm = useCallback(
+		(value: string | null) => {
+			if (value) addAlarm(value);
+		},
+		[addAlarm],
+	);
 
 	return (
 		<Stack gap="md" mt="md">
@@ -65,30 +108,22 @@ export default function WizardReminders({
 
 			<Select
 				label="Add a reminder"
-				placeholder="Select timing"
+				placeholder="Select timing…"
 				data={ALARM_PRESETS}
 				value=""
-				onChange={(value) => value && addAlarm(value)}
+				onChange={onAddAlarm}
 				clearable
 			/>
 
 			{formData.alarms && formData.alarms.length > 0 && (
 				<Stack gap="xs">
 					{formData.alarms.map((alarm) => (
-						<Paper key={alarm.trigger} p="xs" withBorder>
-							<Group justify="space-between" wrap="nowrap">
-								<Group gap="xs">
-									<Badge variant="light" size="sm">
-										{alarm.action}
-									</Badge>
-									<Text size="sm">{formatAlarmTrigger(alarm.trigger)}</Text>
-								</Group>
-								<CloseButton
-									size="sm"
-									onClick={() => removeAlarm(alarm.trigger)}
-								/>
-							</Group>
-						</Paper>
+						<AlarmRow
+							key={alarm.trigger}
+							action={alarm.action}
+							trigger={alarm.trigger}
+							onRemove={removeAlarm}
+						/>
 					))}
 				</Stack>
 			)}

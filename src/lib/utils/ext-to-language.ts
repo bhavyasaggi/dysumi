@@ -8,7 +8,9 @@ type LanguageType =
 	| "ini"
 	| "java"
 	| "javascript"
+	| "hledger-rules"
 	| "latex"
+	| "ledger"
 	| "markdown"
 	| "php"
 	| "plaintext"
@@ -84,6 +86,13 @@ export function extToLanguage(path: string): LanguageType {
 		case "graphql":
 		case "gql":
 			return "graphql";
+		case "ledger":
+		case "journal":
+		case "hledger":
+		case "ldg":
+			return "ledger";
+		case "rules":
+			return "hledger-rules";
 		default:
 			return "plaintext";
 	}

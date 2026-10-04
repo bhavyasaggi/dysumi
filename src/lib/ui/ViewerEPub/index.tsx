@@ -204,13 +204,16 @@ export default function ViewerEPub({ src }: ViewerEPubProps) {
 			},
 		});
 	}, []);
+	const handleLocationChanged = useCallback((loc: string) => {
+		setLocation(loc);
+	}, []);
 
 	return (
 		<div style={{ width: "100%", height: "100%" }}>
 			<ReactReader
 				url={src}
 				location={location}
-				locationChanged={(loc: string) => setLocation(loc)}
+				locationChanged={handleLocationChanged}
 				showToc
 				readerStyles={readerStyles}
 				epubViewStyles={epubViewStyles}

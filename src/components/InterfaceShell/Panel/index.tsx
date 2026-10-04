@@ -7,6 +7,7 @@ import {
 	Text,
 } from "@mantine/core";
 import type React from "react";
+import { useCallback } from "react";
 import { useReduxDispatch } from "@/lib/redux/hooks";
 import { actionInterfaceUpdate } from "@/lib/redux/slices/interface";
 import Icon from "@/lib/ui/Icon";
@@ -18,6 +19,10 @@ export default function InterfaceShellPanel(props: {
 	style?: React.CSSProperties;
 }) {
 	const dispatch = useReduxDispatch();
+
+	const closePanel = useCallback(() => {
+		dispatch(actionInterfaceUpdate({ viewPanel: undefined }));
+	}, [dispatch]);
 
 	return (
 		<Stack h="100%" gap={0} className={props.className} style={props.style}>
@@ -34,9 +39,8 @@ export default function InterfaceShellPanel(props: {
 				<ActionIcon
 					variant="subtle"
 					color="gray"
-					onClick={() => {
-						dispatch(actionInterfaceUpdate({ viewPanel: undefined }));
-					}}
+					onClick={closePanel}
+					aria-label="Hide panel"
 				>
 					<Icon icon="columns" title="Toggle Panel" height={16} width={16} />
 				</ActionIcon>

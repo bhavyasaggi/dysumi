@@ -33,6 +33,7 @@ export default function Icon({
 }: IconProps) {
 	return (
 		<svg
+			aria-hidden="true"
 			className={className}
 			fill={fill ?? "none"}
 			height={height ?? 24}

@@ -7,7 +7,12 @@ import {
 	Text,
 	useCombobox,
 } from "@mantine/core";
-import { useDeferredValue, useState } from "react";
+import {
+	type ChangeEvent,
+	useCallback,
+	useDeferredValue,
+	useState,
+} from "react";
 import { useReduxDispatch } from "@/lib/redux/hooks";
 import { actionInterfaceUpdate } from "@/lib/redux/slices/interface";
 import Icon from "@/lib/ui/Icon";
@@ -45,6 +50,31 @@ export default function InterfaceShellActivityFiles(props: {
 		item.path.toLowerCase().includes(searchDeferred.toLowerCase().trim()),
 	);
 
+	const onOptionSubmit = useCallback(
+		(value: string) => {
+			props.onChange?.(value);
+			combobox.closeDropdown();
+		},
+		[combobox, props.onChange],
+	);
+
+	const onToggleDropdown = useCallback(() => {
+		combobox.toggleDropdown();
+	}, [combobox]);
+
+	const onSearchChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+		setSearch(event.currentTarget.value);
+	}, []);
+
+	const onCloseAll = useCallback(() => {
+		dispatch(
+			actionInterfaceUpdate({
+				openFiles: [{ name: "Untitled", path: "untitled:__init.md" }],
+				activeFile: "untitled:__init.md",
+			}),
+		);
+	}, [dispatch]);
+
 	return (
 		<Combobox
 			store={combobox}
@@ -52,18 +82,16 @@ export default function InterfaceShellActivityFiles(props: {
 			position="bottom-end"
 			dropdownPadding={0}
 			shadow="sm"
-			onOptionSubmit={(value) => {
-				props.onChange?.(value);
-				combobox.closeDropdown();
-			}}
+			onOptionSubmit={onOptionSubmit}
 		>
 			<Combobox.Target withAriaAttributes={false}>
 				<ActionIcon
 					disabled={props.disabled ?? options.length === 0}
 					variant="subtle"
 					color="gray"
-					onClick={() => combobox.toggleDropdown()}
+					onClick={onToggleDropdown}
 					flex="0 0 auto"
+					aria-label="More file actions"
 				>
 					<Icon
 						icon="more-horizontal"
@@ -80,8 +108,9 @@ export default function InterfaceShellActivityFiles(props: {
 							flex="1 1 auto"
 							size="xs"
 							value={search}
-							onChange={(event) => setSearch(event.currentTarget.value)}
-							placeholder="search..."
+							onChange={onSearchChange}
+							aria-label="Search open files"
+							placeholder="Search open files…"
 						/>
 						<Button
 							size="xs"
@@ -98,17 +127,7 @@ export default function InterfaceShellActivityFiles(props: {
 							}
 							aria-label="Close All"
 							title="Close All"
-							onClick={() => {
-								// TODO: Ask to save dirty files iteratively
-								dispatch(
-									actionInterfaceUpdate({
-										openFiles: [
-											{ name: "Untitled", path: "untitled:__init.md" },
-										],
-										activeFile: "untitled:__init.md",
-									}),
-								);
-							}}
+							onClick={onCloseAll}
 						>
 							Close all
 						</Button>
